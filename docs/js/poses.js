@@ -1,0 +1,356 @@
+// Pose scorers - a direct port of pose_trial/poses.py.
+// Each scorer takes 33 MediaPipe landmarks and returns { total, parts }:
+// total in [0,1] plus a per-body-part breakdown for the hint trace.
+
+// MediaPipe pose landmark indices
+export const NOSE = 0;
+export const L_SHOULDER = 11, R_SHOULDER = 12;
+export const L_ELBOW = 13, R_ELBOW = 14;
+export const L_WRIST = 15, R_WRIST = 16;
+export const L_HIP = 23, R_HIP = 24;
+export const L_KNEE = 25, R_KNEE = 26;
+export const L_ANKLE = 27, R_ANKLE = 28;
+
+// Body-part names used in per-part feedback
+export const L_ARM = "left_arm", R_ARM = "right_arm";
+export const L_LEG = "left_leg", R_LEG = "right_leg";
+export const TORSO = "torso";
+
+export const POSE_DESCRIPTIONS = {
+  A: "Crane stance: arms high in a Y, left knee raised and bent",
+  B: "Tilted X: left arm diagonal, right arm straight up, right leg raised",
+  C: "Squat down with both arms reaching forward",
+  D: "Frog: arms folded pointing to the sky, legs wide and bent",
+  E: "Airplane: balance on one leg, torso tilted forward, other leg back, arms along the body",
+  F: "Tree: one foot on the other knee, arms overhead with hands together",
+  G: "Archer: one arm straight out, other elbow bent pulling to the chin, wide stance",
+  H: "Knee hug: pull one knee to your chest with both hands",
+};
+
+class Criteria {
+  constructor() { this.items = []; }
+  add(part, score) { this.items.push([part, score]); }
+  total() {
+    return this.items.reduce((s, [, v]) => s + v, 0) / this.items.length;
+  }
+  result() {
+    const byPart = {};
+    for (const [part, score] of this.items) {
+      (byPart[part] ??= []).push(score);
+    }
+    const parts = {};
+    for (const [part, scores] of Object.entries(byPart)) {
+      parts[part] = scores.reduce((a, b) => a + b, 0) / scores.length;
+    }
+    return { total: this.total(), parts };
+  }
+}
+
+const FAIL = { total: 0.0, parts: {} };
+
+function trapezoid(value, zeroLo, oneLo, oneHi, zeroHi) {
+  if (value <= zeroLo || value >= zeroHi) return 0.0;
+  if (value >= oneLo && value <= oneHi) return 1.0;
+  if (value < oneLo) return (value - zeroLo) / (oneLo - zeroLo);
+  return (zeroHi - value) / (zeroHi - oneHi);
+}
+
+function atLeast(value, zero, one) {
+  if (zero === one) return value >= one ? 1.0 : 0.0;
+  return Math.max(0.0, Math.min(1.0, (value - zero) / (one - zero)));
+}
+
+function atMost(value, one, zero) {
+  return atLeast(-value, -zero, -one);
+}
+
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function midpoint(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+function angleDeg(a, b, c) {
+  const v1 = [a.x - b.x, a.y - b.y];
+  const v2 = [c.x - b.x, c.y - b.y];
+  const n1 = Math.hypot(...v1);
+  const n2 = Math.hypot(...v2);
+  if (n1 < 1e-6 || n2 < 1e-6) return 0.0;
+  const cos = Math.max(-1, Math.min(1, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)));
+  return (Math.acos(cos) * 180) / Math.PI;
+}
+
+function angleFromVerticalUp(origin, tip) {
+  const dx = tip.x - origin.x;
+  const dy = tip.y - origin.y; // y points down
+  const n = Math.hypot(dx, dy);
+  if (n < 1e-6) return 180.0;
+  const cos = Math.max(-1, Math.min(1, -dy / n));
+  return (Math.acos(cos) * 180) / Math.PI;
+}
+
+function torsoLength(lm) {
+  const sx = (lm[L_SHOULDER].x + lm[R_SHOULDER].x) / 2;
+  const sy = (lm[L_SHOULDER].y + lm[R_SHOULDER].y) / 2;
+  const hx = (lm[L_HIP].x + lm[R_HIP].x) / 2;
+  const hy = (lm[L_HIP].y + lm[R_HIP].y) / 2;
+  return Math.max(1e-6, Math.hypot(sx - hx, sy - hy));
+}
+
+function visibilityOk(lm, indices, t) {
+  const vis = indices.map((i) => lm[i].visibility ?? 1.0);
+  return vis.reduce((a, b) => a + b, 0) / vis.length >= t.minVisibility;
+}
+
+const ARMS = [
+  [L_ARM, L_SHOULDER, L_ELBOW, L_WRIST],
+  [R_ARM, R_SHOULDER, R_ELBOW, R_WRIST],
+];
+const LEGS = [
+  [L_LEG, L_HIP, L_KNEE, L_ANKLE],
+  [R_LEG, R_HIP, R_KNEE, R_ANKLE],
+];
+
+function scorePoseA(lm, t) {
+  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+                  L_HIP, L_KNEE, L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const c = new Criteria();
+  for (const [part, sh, el, wr] of ARMS) {
+    const armAngle = angleFromVerticalUp(lm[sh], lm[wr]);
+    c.add(part, trapezoid(armAngle, -1.0, t.aArmAngleIdealLo, t.aArmAngleIdealHi, t.aArmAngleZero));
+    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
+    c.add(part, atLeast(elbow, t.aElbowStraightZero, t.aElbowStraightMin));
+  }
+
+  const torso = torsoLength(lm);
+  const legRaise = (lm[R_ANKLE].y - lm[L_ANKLE].y) / torso; // + = left ankle higher
+  c.add(L_LEG, atLeast(legRaise, t.aLegRaiseZero, t.aLegRaiseMin));
+
+  const kneeAngle = angleDeg(lm[L_HIP], lm[L_KNEE], lm[L_ANKLE]);
+  c.add(L_LEG, trapezoid(kneeAngle, -1.0, 0.0, t.aKneeBendIdealHi, t.aKneeBendZero));
+
+  return c.result();
+}
+
+function scorePoseB(lm, t) {
+  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST, L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const c = new Criteria();
+
+  const leftArm = angleFromVerticalUp(lm[L_SHOULDER], lm[L_WRIST]);
+  c.add(L_ARM, trapezoid(leftArm, t.bLeftArmDiagZeroLo, t.bLeftArmDiagLo,
+                         t.bLeftArmDiagHi, t.bLeftArmDiagZeroHi));
+
+  const rightArm = angleFromVerticalUp(lm[R_SHOULDER], lm[R_WRIST]);
+  c.add(R_ARM, trapezoid(rightArm, -1.0, 0.0, t.bRightArmVertHi, t.bRightArmVertZero));
+
+  for (const [part, sh, el, wr] of ARMS) {
+    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
+    c.add(part, atLeast(elbow, t.bElbowStraightZero, t.bElbowStraightMin));
+  }
+
+  const torso = torsoLength(lm);
+  const legRaise = (lm[L_ANKLE].y - lm[R_ANKLE].y) / torso; // + = right ankle higher
+  c.add(R_LEG, atLeast(legRaise, t.bLegRaiseZero, t.bLegRaiseMin));
+
+  return c.result();
+}
+
+function scorePoseC(lm, t) {
+  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+                  L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const torso = torsoLength(lm);
+  const c = new Criteria();
+
+  for (const [part, hip, knee, ankle] of LEGS) {
+    const kneeAngle = angleDeg(lm[hip], lm[knee], lm[ankle]);
+    c.add(part, trapezoid(kneeAngle, -1.0, 0.0, t.cKneeBendIdealHi, t.cKneeBendZero));
+  }
+
+  const hipY = (lm[L_HIP].y + lm[R_HIP].y) / 2;
+  const kneeY = (lm[L_KNEE].y + lm[R_KNEE].y) / 2;
+  const hipDrop = (kneeY - hipY) / torso;
+  c.add(TORSO, trapezoid(hipDrop, -1.0, -0.5, t.cHipDropIdealHi, t.cHipDropZero));
+
+  for (const [part, sh, el, wr] of ARMS) {
+    const wristHeight = Math.abs(lm[wr].y - lm[sh].y) / torso;
+    c.add(part, trapezoid(wristHeight, -1.0, 0.0, t.cWristHeightTol, t.cWristHeightZero));
+    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
+    c.add(part, atLeast(elbow, t.cElbowExtendedZero, t.cElbowExtendedMin));
+  }
+
+  return c.result();
+}
+
+function scorePoseD(lm, t) {
+  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+                  L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const torso = torsoLength(lm);
+  const c = new Criteria();
+
+  for (const [part, sh, el, wr] of ARMS) {
+    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
+    c.add(part, trapezoid(elbow, t.dElbowBendZeroLo, t.dElbowBendLo,
+                          t.dElbowBendHi, t.dElbowBendZeroHi));
+    const wristUp = (lm[el].y - lm[wr].y) / torso;
+    c.add(part, atLeast(wristUp, 0.0, t.dWristAboveElbowMin));
+    const elbowHeight = Math.abs(lm[el].y - lm[sh].y) / torso;
+    c.add(part, trapezoid(elbowHeight, -1.0, 0.0, t.dElbowHeightTol, t.dElbowHeightZero));
+  }
+
+  const shoulderW = Math.max(1e-6, Math.abs(lm[L_SHOULDER].x - lm[R_SHOULDER].x));
+  const stance = Math.abs(lm[L_ANKLE].x - lm[R_ANKLE].x) / shoulderW;
+  const stanceScore = trapezoid(stance, t.dStanceWidthZero, t.dStanceWidthMin,
+                                t.dStanceWidthIdeal * 3, t.dStanceWidthIdeal * 4);
+
+  for (const [part, hip, knee, ankle] of LEGS) {
+    c.add(part, stanceScore);
+    const kneeAngle = angleDeg(lm[hip], lm[knee], lm[ankle]);
+    c.add(part, trapezoid(kneeAngle, -1.0, 0.0, t.dKneeBendIdealHi, t.dKneeBendZero));
+  }
+
+  return c.result();
+}
+
+function scorePoseE(lm, t) {
+  const needed = [L_SHOULDER, R_SHOULDER, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const torso = torsoLength(lm);
+
+  const options = [];
+  for (const [[part, hip, knee, ankle], standing] of [[LEGS[0], R_ANKLE], [LEGS[1], L_ANKLE]]) {
+    const c = new Criteria();
+
+    const hipMid = midpoint(lm[L_HIP], lm[R_HIP]);
+    const shMid = midpoint(lm[L_SHOULDER], lm[R_SHOULDER]);
+    const tilt = angleFromVerticalUp(hipMid, shMid);
+    c.add(TORSO, trapezoid(tilt, t.eTorsoTiltZeroLo, t.eTorsoTiltIdealLo,
+                           t.eTorsoTiltIdealHi, t.eTorsoTiltZeroHi));
+
+    const raiseAmt = (lm[standing].y - lm[ankle].y) / torso;
+    c.add(part, atLeast(raiseAmt, t.eLegRaiseZero, t.eLegRaiseMin));
+    const kneeAngle = angleDeg(lm[hip], lm[knee], lm[ankle]);
+    c.add(part, atLeast(kneeAngle, t.eKneeStraightZero, t.eKneeStraightMin));
+
+    options.push(c);
+  }
+
+  return options.reduce((a, b) => (a.total() >= b.total() ? a : b)).result();
+}
+
+function scorePoseF(lm, t) {
+  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+                  L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const torso = torsoLength(lm);
+  const c = new Criteria();
+
+  const leftFoot = dist(lm[L_ANKLE], lm[R_KNEE]) / torso;
+  const rightFoot = dist(lm[R_ANKLE], lm[L_KNEE]) / torso;
+  const raisedPart = leftFoot <= rightFoot ? L_LEG : R_LEG;
+  c.add(raisedPart, atMost(Math.min(leftFoot, rightFoot), t.fFootToKneeMax, t.fFootToKneeZero));
+
+  for (const [part, sh, el, wr] of ARMS) {
+    const armAngle = angleFromVerticalUp(lm[sh], lm[wr]);
+    c.add(part, atMost(armAngle, t.fArmAngleMax, t.fArmAngleZero));
+    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
+    c.add(part, atLeast(elbow, t.fElbowStraightZero, t.fElbowStraightMin));
+  }
+
+  const hands = atMost(dist(lm[L_WRIST], lm[R_WRIST]) / torso,
+                       t.fHandsTogetherMax, t.fHandsTogetherZero);
+  c.add(L_ARM, hands);
+  c.add(R_ARM, hands);
+
+  return c.result();
+}
+
+function scorePoseG(lm, t) {
+  const needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+                  L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const torso = torsoLength(lm);
+
+  const stance = Math.abs(lm[L_ANKLE].x - lm[R_ANKLE].x) / torso;
+  const stanceScore = atLeast(stance, t.gStanceWidthZero, t.gStanceWidthMin);
+
+  const options = [];
+  for (const [straight, bent] of [[ARMS[0], ARMS[1]], [ARMS[1], ARMS[0]]]) {
+    const [sPart, sSh, sEl, sWr] = straight;
+    const [bPart, bSh, bEl, bWr] = bent;
+    const c = new Criteria();
+
+    const armAngle = angleFromVerticalUp(lm[sSh], lm[sWr]);
+    c.add(sPart, trapezoid(armAngle, t.gStraightArmZeroLo, t.gStraightArmIdealLo,
+                           t.gStraightArmIdealHi, t.gStraightArmZeroHi));
+    const elbow = angleDeg(lm[sSh], lm[sEl], lm[sWr]);
+    c.add(sPart, atLeast(elbow, t.gStraightElbowZero, t.gStraightElbowMin));
+
+    const bentAngle = angleDeg(lm[bSh], lm[bEl], lm[bWr]);
+    c.add(bPart, trapezoid(bentAngle, t.gBentElbowZeroLo, t.gBentElbowLo,
+                           t.gBentElbowHi, t.gBentElbowZeroHi));
+    const chin = dist(lm[bWr], lm[NOSE]) / torso;
+    c.add(bPart, atMost(chin, t.gWristToChinMax, t.gWristToChinZero));
+
+    c.add(L_LEG, stanceScore);
+    c.add(R_LEG, stanceScore);
+
+    options.push(c);
+  }
+
+  return options.reduce((a, b) => (a.total() >= b.total() ? a : b)).result();
+}
+
+function scorePoseH(lm, t) {
+  const needed = [L_WRIST, R_WRIST, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
+  if (!visibilityOk(lm, needed, t)) return FAIL;
+
+  const torso = torsoLength(lm);
+
+  const options = [];
+  for (const [raised, standing] of [[LEGS[0], LEGS[1]], [LEGS[1], LEGS[0]]]) {
+    const [part, hip, knee, ankle] = raised;
+    const [oPart, oHip, oKnee, oAnkle] = standing;
+    const c = new Criteria();
+
+    const lift = (lm[hip].y - lm[knee].y) / torso;
+    c.add(part, atLeast(lift, t.hKneeLiftZero, t.hKneeLiftMin));
+    const kneeAngle = angleDeg(lm[hip], lm[knee], lm[ankle]);
+    c.add(part, atMost(kneeAngle, t.hKneeBendMax, t.hKneeBendZero));
+
+    for (const [aPart, wr] of [[L_ARM, L_WRIST], [R_ARM, R_WRIST]]) {
+      const hug = dist(lm[wr], lm[knee]) / torso;
+      c.add(aPart, atMost(hug, t.hWristToKneeMax, t.hWristToKneeZero));
+    }
+
+    const standAngle = angleDeg(lm[oHip], lm[oKnee], lm[oAnkle]);
+    c.add(oPart, atLeast(standAngle, t.hStandLegStraightZero, t.hStandLegStraightMin));
+
+    options.push(c);
+  }
+
+  return options.reduce((a, b) => (a.total() >= b.total() ? a : b)).result();
+}
+
+export const POSE_SCORERS = {
+  A: scorePoseA,
+  B: scorePoseB,
+  C: scorePoseC,
+  D: scorePoseD,
+  E: scorePoseE,
+  F: scorePoseF,
+  G: scorePoseG,
+  H: scorePoseH,
+};

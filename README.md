@@ -6,7 +6,14 @@ and each adventurer must hold their assigned pose until the whole team goes
 green and the countdown completes.
 
 Built on [MediaPipe Pose Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker)
-(multi-person mode) and OpenCV.
+(multi-person mode). Two implementations share the same rules and tuning:
+
+- **Python desktop app** (this repo root) - OpenCV window, for a dedicated
+  station machine. Reference implementation.
+- **Web app** (`docs/`) - zero-install, runs fully in the browser via
+  MediaPipe Tasks for Web. Hosted on GitHub Pages:
+  **<https://ystimokk.github.io/pose-trial-game/>**. All processing stays
+  on-device; no video ever leaves the browser.
 
 ## How a trial works
 
@@ -84,6 +91,18 @@ stick-figure diagram of each pose), `h` toggles hint mode (the skeleton trace
 the AI detects - during the trial each limb is individually colored green or
 red so participants can see exactly which body part needs fixing), `r`
 regenerates the code and restarts the trial, `q` quits.
+
+## Running the web version
+
+Open <https://ystimokk.github.io/pose-trial-game/> (or serve `docs/` locally
+with any static server, e.g. `python -m http.server --directory docs`). The
+admin picks the number of adventurers on the start screen; the "Advanced"
+section offers dev mode and a starting round. On-screen buttons or the same
+`I` / `H` / `R` keys control the info overlay, hint trace, and new code.
+
+The web app needs HTTPS (or localhost) for camera access - GitHub Pages
+provides this automatically. Parameters live in `docs/js/config.js`,
+mirroring the Python config.
 
 ## Tuning per build
 
