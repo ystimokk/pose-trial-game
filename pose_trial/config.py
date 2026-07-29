@@ -13,9 +13,11 @@ class PoseTuning:
     """Geometry tolerances used by the pose scorers (all angles in degrees,
     all distances normalized by torso length unless noted).
 
-    Bands are tuned for kids: the "ideal" range that scores a full 1.0 is
-    generous, so a roughly-right pose counts, and the zero points are far out
-    so being off gives partial credit instead of a hard fail.
+    Bands are tuned for kids, but the pose still has to be recognisably right.
+    The "ideal" range scoring a full 1.0 asks for real accuracy, while the zero
+    points stay far out so being off gives partial credit instead of a hard
+    fail. A pose survives roughly 0.19 torso-lengths of drift before it stops
+    counting; widening an ideal band raises that and makes the game easier.
 
     Poses are also tuned to be COMPACT. The camera has to fit up to
     max_participants kids side by side, so no pose asks for a limb stretched
@@ -30,20 +32,20 @@ class PoseTuning:
     # --- Pose A: crane (both arms reaching straight up, left knee raised) ---
     # Straight up rather than out in a Y: same "hands to the sky" shape, but it
     # costs no extra floor width.
-    a_arm_angle_max: float = 28.0        # each arm within this angle of vertical
+    a_arm_angle_max: float = 21.0        # each arm within this angle of vertical
     a_arm_angle_zero: float = 62.0
-    a_wrist_above_head_min: float = 0.30   # wrist above the nose (fraction of torso)
+    a_wrist_above_head_min: float = 0.37   # wrist above the nose (fraction of torso)
     a_wrist_above_head_zero: float = -0.05
-    a_elbow_straight_min: float = 140.0
+    a_elbow_straight_min: float = 149.0
     a_elbow_straight_zero: float = 95.0
     # Hands stay apart: arms up with the hands TOGETHER is the tree (F).
-    a_hands_apart_min: float = 0.45      # wrist-to-wrist distance (fraction of torso)
+    a_hands_apart_min: float = 0.52      # wrist-to-wrist distance (fraction of torso)
     a_hands_apart_zero: float = 0.12
     # Saturates at a modest lift with a wide ramp below it, so a raised foot
     # that sinks a little stays green instead of flickering.
-    a_leg_raise_min: float = 0.10        # left ankle above right ankle (fraction of torso)
+    a_leg_raise_min: float = 0.12        # left ankle above right ankle (fraction of torso)
     a_leg_raise_zero: float = -0.02      # but level feet must NOT earn much credit
-    a_knee_bend_ideal_hi: float = 145.0  # left knee angle at or below this = bent enough
+    a_knee_bend_ideal_hi: float = 140.0  # left knee angle at or below this = bent enough
     a_knee_bend_zero: float = 172.0
 
     # --- Pose B: tilted X (left arm diagonal, right arm straight up, right leg raised) ---
@@ -51,26 +53,30 @@ class PoseTuning:
     # pose (F), not the tilted X, so it must not score as "diagonal". The upper
     # edge is what keeps the pose narrow - an arm out past ~45 degrees is a
     # wingspan, not a tilt.
-    b_left_arm_diag_lo: float = 17.0     # left arm angle from vertical, ideal band
-    b_left_arm_diag_hi: float = 38.0
+    b_left_arm_diag_lo: float = 19.0     # left arm angle from vertical, ideal band
+    b_left_arm_diag_hi: float = 33.0
     b_left_arm_diag_zero_lo: float = 5.0
     b_left_arm_diag_zero_hi: float = 62.0
-    b_right_arm_vert_hi: float = 22.0    # right arm within this angle of vertical
+    b_right_arm_vert_hi: float = 16.0    # right arm within this angle of vertical
     b_right_arm_vert_zero: float = 52.0
-    b_elbow_straight_min: float = 135.0
+    b_elbow_straight_min: float = 144.0
     b_elbow_straight_zero: float = 90.0
     # The arms make an X, so the hands are far apart. Without this the pose is
     # under-specified: the tree (F) satisfies everything else and scores 0.80.
-    b_wrists_apart_min: float = 0.55     # wrist-to-wrist distance (fraction of torso)
+    b_wrists_apart_min: float = 0.62     # wrist-to-wrist distance (fraction of torso)
     b_wrists_apart_zero: float = 0.20
     # The raised hand must clear the head. A real B clears it by ~0.5 torso, so
     # this costs nothing, but it stops the archer's fist-at-the-chin scoring as B.
-    b_right_wrist_above_nose_min: float = 0.25   # wrist above nose (fraction of torso)
+    b_right_wrist_above_nose_min: float = 0.30   # wrist above nose (fraction of torso)
     b_right_wrist_above_nose_zero: float = 0.0   # level with the nose earns nothing
-    b_leg_raise_min: float = 0.10        # right ankle above left ankle (fraction of torso)
+    b_leg_raise_min: float = 0.12        # right ankle above left ankle (fraction of torso)
     b_leg_raise_zero: float = -0.02
 
     # --- Pose C: squat with arms forward ---
+    # C's bands are wider than the other poses on purpose. Hip and knee sit
+    # close together, so landmark noise swings the ratios far more than it does
+    # for a limb angle; matching the others here would make C the one pose that
+    # flickers. It is already the least forgiving pose of the eight.
     c_knee_bend_ideal_hi: float = 145.0  # knee angle at or below this = fully bent enough
     c_knee_bend_zero: float = 178.0
     c_hip_drop_ideal_hi: float = 0.62    # (knee.y - hip.y) / torso; small = deep squat
@@ -82,77 +88,77 @@ class PoseTuning:
 
     # --- Pose E: rocket (one arm straight up, the other pressed down at the
     # side, feet together). Either arm may be the raised one. ---
-    e_up_arm_angle_max: float = 25.0      # raised arm within this angle of vertical
+    e_up_arm_angle_max: float = 19.0      # raised arm within this angle of vertical
     e_up_arm_angle_zero: float = 55.0
-    e_up_wrist_above_head_min: float = 0.25  # wrist above the nose (fraction of torso)
+    e_up_wrist_above_head_min: float = 0.32  # wrist above the nose (fraction of torso)
     e_up_wrist_above_head_zero: float = -0.10
-    e_elbow_straight_min: float = 140.0
+    e_elbow_straight_min: float = 149.0
     e_elbow_straight_zero: float = 95.0
-    e_down_arm_angle_min: float = 162.0   # pressed arm points down (180 = straight down)
+    e_down_arm_angle_min: float = 169.0   # pressed arm points down (180 = straight down)
     e_down_arm_angle_zero: float = 125.0
     # Distance to the hip, not just horizontal offset: an arm raised straight up
     # is also close to the hip in x, and would otherwise count as "pinned down".
-    e_down_wrist_to_hip_max: float = 0.55  # wrist near the hip (fraction of torso)
+    e_down_wrist_to_hip_max: float = 0.42  # wrist near the hip (fraction of torso)
     e_down_wrist_to_hip_zero: float = 1.20
-    e_feet_together_max: float = 0.30     # ankle spread (fraction of torso)
+    e_feet_together_max: float = 0.16     # ankle spread (fraction of torso)
     e_feet_together_zero: float = 1.00
-    e_leg_straight_min: float = 150.0     # standing tall, both knees straight
+    e_leg_straight_min: float = 159.0     # standing tall, both knees straight
     e_leg_straight_zero: float = 105.0
 
     # --- Pose F: tree (foot on other knee, arms overhead with hands together) ---
-    f_foot_to_knee_max: float = 0.45      # raised ankle near other knee (fraction of torso)
+    f_foot_to_knee_max: float = 0.37      # raised ankle near other knee (fraction of torso)
     f_foot_to_knee_zero: float = 0.85
-    f_arm_angle_max: float = 40.0         # arms within this angle of vertical
+    f_arm_angle_max: float = 34.0         # arms within this angle of vertical
     f_arm_angle_zero: float = 70.0
-    f_elbow_straight_min: float = 135.0
+    f_elbow_straight_min: float = 144.0
     f_elbow_straight_zero: float = 90.0
-    f_hands_together_max: float = 0.40    # wrist-to-wrist distance (fraction of torso)
+    f_hands_together_max: float = 0.27    # wrist-to-wrist distance (fraction of torso)
     f_hands_together_zero: float = 1.05
 
     # --- Pose G: archer aiming at the sky (bow arm up on a diagonal, other
     # elbow bent pulling to the chin, one leg lifted) ---
     # The bow arm points up rather than out to the side: same shape, a third
     # of the floor space.
-    g_bow_arm_ideal_lo: float = 15.0       # bow arm angle from vertical
-    g_bow_arm_ideal_hi: float = 42.0
+    g_bow_arm_ideal_lo: float = 18.0       # bow arm angle from vertical
+    g_bow_arm_ideal_hi: float = 35.0
     g_bow_arm_zero_lo: float = 2.0
     g_bow_arm_zero_hi: float = 75.0
-    g_straight_elbow_min: float = 135.0
+    g_straight_elbow_min: float = 144.0
     g_straight_elbow_zero: float = 90.0
-    g_bow_wrist_from_face_min: float = 0.80  # bow hand reaches away from the face
+    g_bow_wrist_from_face_min: float = 0.90  # bow hand reaches away from the face
     g_bow_wrist_from_face_zero: float = 0.30
-    g_bent_elbow_lo: float = 25.0          # drawing-arm elbow angle band
-    g_bent_elbow_hi: float = 125.0
+    g_bent_elbow_lo: float = 29.0          # drawing-arm elbow angle band
+    g_bent_elbow_hi: float = 119.0
     g_bent_elbow_zero_lo: float = 5.0
     g_bent_elbow_zero_hi: float = 155.0
-    g_wrist_to_chin_max: float = 0.50      # bent-arm wrist near the chin (fraction of torso)
+    g_wrist_to_chin_max: float = 0.38      # bent-arm wrist near the chin (fraction of torso)
     g_wrist_to_chin_zero: float = 1.10
     # Height difference, not ankle spread: a lifted leg reads reliably however
     # the archer is turned, and keeps the pose narrow. Either leg may lift.
-    g_leg_lift_min: float = 0.10       # one ankle clearly above the other (fraction of torso)
+    g_leg_lift_min: float = 0.12       # one ankle clearly above the other (fraction of torso)
     g_leg_lift_zero: float = 0.0       # feet level on the floor earns nothing
 
     # --- Pose H: knee hug (knee pulled to chest with both hands) ---
-    h_knee_lift_min: float = 0.06          # raised knee above hip (fraction of torso)
+    h_knee_lift_min: float = 0.10          # raised knee above hip (fraction of torso)
     h_knee_lift_zero: float = -0.12
-    h_knee_bend_max: float = 110.0         # raised knee tightly bent
+    h_knee_bend_max: float = 101.0         # raised knee tightly bent
     h_knee_bend_zero: float = 155.0
-    h_wrist_to_knee_max: float = 0.50      # each wrist near the raised knee
+    h_wrist_to_knee_max: float = 0.42      # each wrist near the raised knee
     h_wrist_to_knee_zero: float = 0.90
-    h_stand_leg_straight_min: float = 135.0
+    h_stand_leg_straight_min: float = 144.0
     h_stand_leg_straight_zero: float = 90.0
 
     # --- Pose D: frog crouch (all the way down, knees pushed out, hands to the
     # floor between the feet). The old goalpost arms were replaced: upper arms
     # held out to the side are the widest thing a body can do, and pointing
     # them at the camera instead makes the elbow angle unmeasurable in 2D. ---
-    d_knee_bend_ideal_hi: float = 100.0  # knee angle at or below this = deep enough
+    d_knee_bend_ideal_hi: float = 87.0  # knee angle at or below this = deep enough
     d_knee_bend_zero: float = 165.0
-    d_hip_drop_ideal_hi: float = 0.35    # (knee.y - hip.y) / torso; hips down at knee level
+    d_hip_drop_ideal_hi: float = 0.25    # (knee.y - hip.y) / torso; hips down at knee level
     d_hip_drop_zero: float = 0.85
-    d_hands_below_knee_min: float = 0.15  # wrist below the knee (fraction of torso)
+    d_hands_below_knee_min: float = 0.23  # wrist below the knee (fraction of torso)
     d_hands_below_knee_zero: float = -0.25
-    d_knees_out_min: float = 0.15        # knee spread beyond ankle spread (fraction of torso)
+    d_knees_out_min: float = 0.22        # knee spread beyond ankle spread (fraction of torso)
     d_knees_out_zero: float = -0.20
 
 
@@ -162,12 +168,13 @@ class AppConfig:
 
     # --- Gameplay ---
     max_participants: int = 5          # upper bound for n
-    # Pose counts only above this score. Kept forgiving for kids: combined with
-    # the wide bands above, a roughly-correct pose scores 1.0 and one sloppy
-    # detail still passes. Raise toward 0.95+ for an older/steadier group.
-    confidence_threshold: float = 0.85
+    # Pose counts only above this score. A correct pose scores 1.0 and a messy
+    # but genuine attempt lands around 0.90-0.98, so one sloppy detail still
+    # passes while a half-hearted shape does not. Lower toward 0.85 for younger
+    # kids, raise toward 0.92 for an older/steadier group.
+    confidence_threshold: float = 0.88
     # Per-pose overrides for poses that are harder to score cleanly.
-    confidence_overrides: dict = field(default_factory=lambda: {"D": 0.80})
+    confidence_overrides: dict = field(default_factory=lambda: {"D": 0.83})
     hold_seconds: float = 5.0          # everyone must hold the pose this long
     # One alphabet per round; the next round unlocks when the mission completes.
     round_alphabets: tuple = ("ABCD", "EFGH", "ABCDEFGH")

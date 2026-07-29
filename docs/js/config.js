@@ -5,11 +5,12 @@
 export const CONFIG = {
   // --- Gameplay ---
   maxParticipants: 5,
-  // Pose counts only above this score. Kept forgiving for kids: combined with
-  // the wide bands below, a roughly-correct pose scores 1.0 and one sloppy
-  // detail still passes. Raise toward 0.95+ for an older/steadier group.
-  confidenceThreshold: 0.85,
-  confidenceOverrides: { D: 0.80 }, // per-pose threshold overrides
+  // Pose counts only above this score. A correct pose scores 1.0 and a messy
+  // but genuine attempt lands around 0.90-0.98, so one sloppy detail still
+  // passes while a half-hearted shape does not. Lower toward 0.85 for younger
+  // kids, raise toward 0.92 for an older/steadier group.
+  confidenceThreshold: 0.88,
+  confidenceOverrides: { D: 0.83 }, // per-pose threshold overrides
   holdSeconds: 5.0,               // everyone must hold the pose this long
   // One alphabet per round; the next round unlocks when the mission completes.
   roundAlphabets: ["ABCD", "EFGH", "ABCDEFGH"],
@@ -47,9 +48,11 @@ export const CONFIG = {
 
   // --- Pose geometry tolerances (angles in degrees; distances normalized by
   // torso length unless noted). Mirrors PoseTuning in the Python app.
-  // Bands are tuned for kids: the "ideal" range that scores a full 1.0 is
-  // generous, and the zero points are far out so being off gives partial
-  // credit instead of a hard fail.
+  // Bands are tuned for kids, but the pose still has to be recognisably right.
+  // The "ideal" range scoring a full 1.0 asks for real accuracy, while the zero
+  // points stay far out so being off gives partial credit instead of a hard
+  // fail. A pose survives roughly 0.19 torso-lengths of drift before it stops
+  // counting; widening an ideal band raises that and makes the game easier.
   // Poses are also tuned to be COMPACT: the camera has to fit up to
   // maxParticipants kids side by side, so no pose asks for a limb stretched
   // out sideways. Every pose fits in roughly 1.3 torso-lengths of width (a kid
@@ -60,45 +63,49 @@ export const CONFIG = {
     // Pose A: crane (both arms reaching straight up, left knee raised).
     // Straight up rather than out in a Y: same "hands to the sky" shape, but it
     // costs no extra floor width.
-    aArmAngleMax: 28.0,
+    aArmAngleMax: 21.0,
     aArmAngleZero: 62.0,
-    aWristAboveHeadMin: 0.30,
+    aWristAboveHeadMin: 0.37,
     aWristAboveHeadZero: -0.05,
-    aElbowStraightMin: 140.0,
+    aElbowStraightMin: 149.0,
     aElbowStraightZero: 95.0,
     // Hands stay apart: arms up with the hands TOGETHER is the tree (F).
-    aHandsApartMin: 0.45,
+    aHandsApartMin: 0.52,
     aHandsApartZero: 0.12,
     // Saturates at a modest lift with a wide ramp below it, so a raised foot
     // that sinks a little stays green instead of flickering.
-    aLegRaiseMin: 0.10,
+    aLegRaiseMin: 0.12,
     aLegRaiseZero: -0.02, // but level feet must NOT earn much credit
-    aKneeBendIdealHi: 145.0,
+    aKneeBendIdealHi: 140.0,
     aKneeBendZero: 172.0,
 
     // Pose B: tilted X. The lower edge of the left-arm band stays meaningful:
     // a near-vertical left arm is the tree pose (F), not the tilted X. The
     // upper edge keeps the pose narrow - past ~40 degrees it is a wingspan.
-    bLeftArmDiagLo: 17.0,
-    bLeftArmDiagHi: 38.0,
+    bLeftArmDiagLo: 19.0,
+    bLeftArmDiagHi: 33.0,
     bLeftArmDiagZeroLo: 5.0,
     bLeftArmDiagZeroHi: 62.0,
-    bRightArmVertHi: 22.0,
+    bRightArmVertHi: 16.0,
     bRightArmVertZero: 52.0,
-    bElbowStraightMin: 135.0,
+    bElbowStraightMin: 144.0,
     bElbowStraightZero: 90.0,
     // The arms make an X, so the hands are far apart. Without this the pose is
     // under-specified: the tree (F) satisfies everything else and scores 0.80.
-    bWristsApartMin: 0.55,
+    bWristsApartMin: 0.62,
     bWristsApartZero: 0.20,
     // The raised hand must clear the head. A real B clears it by ~0.5 torso, so
     // this costs nothing, but it stops the archer's fist-at-the-chin scoring as B.
-    bRightWristAboveNoseMin: 0.25,
+    bRightWristAboveNoseMin: 0.30,
     bRightWristAboveNoseZero: 0.0,
-    bLegRaiseMin: 0.10,
+    bLegRaiseMin: 0.12,
     bLegRaiseZero: -0.02,
 
     // Pose C: squat with arms forward
+    // C's bands are wider than the other poses on purpose. Hip and knee sit
+    // close together, so landmark noise swings the ratios far more than it
+    // does for a limb angle; matching the others here would make C the one
+    // pose that flickers. It is already the least forgiving of the eight.
     cKneeBendIdealHi: 145.0,
     cKneeBendZero: 178.0,
     cHipDropIdealHi: 0.62,
@@ -111,73 +118,73 @@ export const CONFIG = {
     // Pose D: frog crouch (all the way down, knees out, hands to the floor).
     // The old goalpost arms were replaced: upper arms held out to the side are
     // the widest thing a body can do.
-    dKneeBendIdealHi: 100.0,
+    dKneeBendIdealHi: 87.0,
     dKneeBendZero: 165.0,
-    dHipDropIdealHi: 0.35,
+    dHipDropIdealHi: 0.25,
     dHipDropZero: 0.85,
-    dHandsBelowKneeMin: 0.15,
+    dHandsBelowKneeMin: 0.23,
     dHandsBelowKneeZero: -0.25,
-    dKneesOutMin: 0.15,
+    dKneesOutMin: 0.22,
     dKneesOutZero: -0.20,
 
     // Pose E: rocket (one arm straight up, the other pressed down, feet together)
-    eUpArmAngleMax: 25.0,
+    eUpArmAngleMax: 19.0,
     eUpArmAngleZero: 55.0,
-    eUpWristAboveHeadMin: 0.25,
+    eUpWristAboveHeadMin: 0.32,
     eUpWristAboveHeadZero: -0.10,
-    eElbowStraightMin: 140.0,
+    eElbowStraightMin: 149.0,
     eElbowStraightZero: 95.0,
-    eDownArmAngleMin: 162.0,
+    eDownArmAngleMin: 169.0,
     eDownArmAngleZero: 125.0,
     // Distance to the hip, not just horizontal offset: an arm raised straight up
     // is also close to the hip in x, and would otherwise count as "pinned down".
-    eDownWristToHipMax: 0.55,
+    eDownWristToHipMax: 0.42,
     eDownWristToHipZero: 1.20,
-    eFeetTogetherMax: 0.30,
+    eFeetTogetherMax: 0.16,
     eFeetTogetherZero: 1.00,
-    eLegStraightMin: 150.0,
+    eLegStraightMin: 159.0,
     eLegStraightZero: 105.0,
 
     // Pose F: tree
-    fFootToKneeMax: 0.45,
+    fFootToKneeMax: 0.37,
     fFootToKneeZero: 0.85,
-    fArmAngleMax: 40.0,
+    fArmAngleMax: 34.0,
     fArmAngleZero: 70.0,
-    fElbowStraightMin: 135.0,
+    fElbowStraightMin: 144.0,
     fElbowStraightZero: 90.0,
-    fHandsTogetherMax: 0.40,
+    fHandsTogetherMax: 0.27,
     fHandsTogetherZero: 1.05,
 
     // Pose G: archer aiming at the sky (bow arm up on a diagonal rather than
     // out to the side: same shape, a third of the floor space). Stance is
     // normalized by torso length, robust to turning.
-    gBowArmIdealLo: 15.0,
-    gBowArmIdealHi: 42.0,
+    gBowArmIdealLo: 18.0,
+    gBowArmIdealHi: 35.0,
     gBowArmZeroLo: 2.0,
     gBowArmZeroHi: 75.0,
-    gStraightElbowMin: 135.0,
+    gStraightElbowMin: 144.0,
     gStraightElbowZero: 90.0,
-    gBowWristFromFaceMin: 0.80,
+    gBowWristFromFaceMin: 0.90,
     gBowWristFromFaceZero: 0.30,
-    gBentElbowLo: 25.0,
-    gBentElbowHi: 125.0,
+    gBentElbowLo: 29.0,
+    gBentElbowHi: 119.0,
     gBentElbowZeroLo: 5.0,
     gBentElbowZeroHi: 155.0,
-    gWristToChinMax: 0.50,
+    gWristToChinMax: 0.38,
     gWristToChinZero: 1.10,
     // Height difference, not ankle spread: a lifted leg reads reliably however
     // the archer is turned, and keeps the pose narrow. Either leg may lift.
-    gLegLiftMin: 0.10,
+    gLegLiftMin: 0.12,
     gLegLiftZero: 0.0,
 
     // Pose H: knee hug
-    hKneeLiftMin: 0.06,
+    hKneeLiftMin: 0.10,
     hKneeLiftZero: -0.12,
-    hKneeBendMax: 110.0,
+    hKneeBendMax: 101.0,
     hKneeBendZero: 155.0,
-    hWristToKneeMax: 0.50,
+    hWristToKneeMax: 0.42,
     hWristToKneeZero: 0.90,
-    hStandLegStraightMin: 135.0,
+    hStandLegStraightMin: 144.0,
     hStandLegStraightZero: 90.0,
   },
 };

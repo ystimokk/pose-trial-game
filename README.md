@@ -142,8 +142,8 @@ python main.py --camera 1         # then use the one that works
 
 All numeric parameters live in `pose_trial/config.py`:
 
-- `AppConfig` — gameplay values: confidence threshold (default **0.85**, with
-  per-pose overrides in `confidence_overrides`, e.g. D at 0.80),
+- `AppConfig` — gameplay values: confidence threshold (default **0.88**, with
+  per-pose overrides in `confidence_overrides`, e.g. D at 0.83),
   hold duration (default **5 s**), the break grace period (default **0 s**),
   max participants (default **5**), the round alphabets, flow timings, camera
   settings, and mirror display.
@@ -157,20 +157,26 @@ Only `n` is dynamic; everything else is fixed per build via `config.py`.
 
 ### Difficulty
 
-The defaults are deliberately forgiving so kids succeed rather than fight the
-detector: each pose has wide "ideal" bands that score a full 1.0 and the bar to
-turn green is 85%. The bands are still narrow enough that each pose only
-matches itself — the closest any wrong pose comes to passing is 0.81 against
-an 0.85 bar.
+The defaults ask kids to actually hit the pose without making them fight the
+detector. The bar to turn green is 88%, a correct pose scores 1.0, and a messy
+but genuine attempt lands around 0.90–0.98, so one sloppy detail still passes.
+Each pose only matches itself by a wide margin — the closest any wrong pose
+comes to passing is 0.79 against the 0.88 bar.
 
-Forgiveness lives in the pose geometry, not in the timer. The hold countdown
+The useful way to measure difficulty is the **tolerance radius**: how far every
+joint can drift at once and still count. At the defaults that averages 0.19
+torso-lengths, roughly 10 cm on a kid, ranging from 0.08 on the squat (C) to
+0.27 on the knee hug (H). Pose C's bands are deliberately wider than the rest
+because hip and knee sit close together, so landmark noise swings its ratios
+much harder than it does a limb angle.
+
+Difficulty lives in the pose geometry, not in the timer. The hold countdown
 only advances on frames where every letter is green, so a red letter always
 stops the clock; at the default `break_grace_seconds` of 0 it resets outright.
-What keeps a letter from flickering is the size of the passing region: on the
-tightest pose a single joint can drift about 0.34 torso-lengths (roughly 17 cm
-on a kid) before the pose goes red, and most poses allow 0.5 or more.
 
-To make it harder, raise `confidence_threshold` (0.95+ feels strict) and/or
-narrow the ideal bands in `PoseTuning`. To give kids more physical slack,
-widen the ideal bands and push the matching zero points further out — lowering
-the threshold alone tends to create collisions between poses instead.
+To make it harder, narrow the ideal bands in `PoseTuning` and/or raise
+`confidence_threshold`. To give kids more slack, widen the ideal bands and push
+the matching zero points further out — lowering the threshold alone tends to
+create collisions between poses instead. Changing a band by 20% of the gap
+between its ideal edge and its zero point moves the tolerance radius by about
+the same 20%.
