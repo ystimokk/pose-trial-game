@@ -33,6 +33,41 @@ def generate_code(alphabet: str, n: int) -> str:
     return "".join(random.choice(alphabet) for _ in range(n))
 
 
+class HoldClock:
+    """Counts how long a pose has been held.
+
+    Time accumulates ONLY on frames where the pose is actually good. A break
+    shorter than the grace period pauses the clock (so detector jitter does
+    not punish anyone); a longer break clears it. With grace at 0 any red
+    frame resets the hold immediately.
+    """
+
+    def __init__(self, grace_seconds: float):
+        self.grace = grace_seconds
+        self.held = 0.0
+        self._green_at = None   # previous green frame, or None if the last frame was red
+        self._broke_at = None   # when the current red streak started
+
+    def update(self, green: bool, now: float) -> float:
+        if green:
+            if self._green_at is not None:
+                self.held += now - self._green_at
+            self._green_at = now
+            self._broke_at = None
+        else:
+            self._green_at = None
+            if self._broke_at is None:
+                self._broke_at = now
+            if now - self._broke_at >= self.grace:
+                self.held = 0.0
+        return self.held
+
+    def reset(self):
+        self.held = 0.0
+        self._green_at = None
+        self._broke_at = None
+
+
 def _sorted_left_to_right(people, mirror: bool):
     """Order detected people by their on-screen x position (left to right)."""
     def display_x(lm):
@@ -62,8 +97,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
     dev_letters = "".join(dict.fromkeys("".join(rounds)))
     dev_index = 0
     solved = [False] * n          # mystery rounds: locked in after a full hold
-    person_hold = [None] * n      # mystery rounds: per-person hold start times
-    person_green = [None] * n     # mystery rounds: per-person last-green times
+    person_clocks = [HoldClock(cfg.break_grace_seconds) for _ in range(n)]
 
     def next_code() -> str:
         nonlocal dev_index
@@ -79,8 +113,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
     state = State.LINEUP
     lineup_full_since = None      # when n people first became visible
     detected_at = None            # when the DETECTED interstitial started
-    hold_started_at = None        # when everyone first went green
-    last_all_green_at = None      # for the break grace period
+    hold = HoldClock(cfg.break_grace_seconds)  # group hold, green time only
     completed_at = None           # when the COMPLETE screen appeared
     round_complete_at = None      # when the ROUND_COMPLETE screen appeared
     show_info = False             # info overlay toggled with the I key
@@ -117,8 +150,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                 ui.draw_detected(display, n)
                 if now - detected_at >= cfg.detected_message_seconds:
                     state = State.TRIAL
-                    hold_started_at = None
-                    last_all_green_at = None
+                    hold.reset()
 
             elif state == State.TRIAL:
                 mystery = not dev and round_idx in cfg.mystery_rounds
@@ -133,13 +165,8 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                     x = (1.0 - nose.x) * disp_w if cfg.mirror_display else nose.x * disp_w
                     if mystery:
                         if not solved[i]:
-                            if held:
-                                person_green[i] = now
-                                person_hold[i] = person_hold[i] or now
-                                if now - person_hold[i] >= cfg.hold_seconds:
-                                    solved[i] = True
-                            elif person_green[i] is None or now - person_green[i] > cfg.break_grace_seconds:
-                                person_hold[i] = None
+                            if person_clocks[i].update(held, now) >= cfg.hold_seconds:
+                                solved[i] = True
                         statuses[i] = solved[i]
                         # The skeleton IS the puzzle feedback: always shown
                         ui.draw_skeleton(display, lm, cfg.mirror_display,
@@ -153,9 +180,9 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
 
                 if mystery:
                     def hold_state(i):
-                        if solved[i] or person_hold[i] is None:
+                        if solved[i] or person_clocks[i].held <= 0.0:
                             return None
-                        return cfg.hold_seconds - (now - person_hold[i])
+                        return cfg.hold_seconds - person_clocks[i].held
 
                     strip_states = [(solved[i], hold_state(i)) for i in range(n)]
                     ui.draw_status_circles(display, strip_states, cfg.hold_seconds)
@@ -171,26 +198,20 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                             completed_at = now
                 else:
                     all_green = len(people) >= n and all(statuses)
-                    if all_green:
-                        last_all_green_at = now
-                        hold_started_at = hold_started_at or now
-                    elif last_all_green_at is None or now - last_all_green_at > cfg.break_grace_seconds:
-                        hold_started_at = None
+                    elapsed = hold.update(all_green, now)
 
                     ui.draw_pose_code(display, list(code), statuses)
                     ui.draw_person_letters(display, anchors)
 
-                    if hold_started_at is not None:
-                        elapsed = now - hold_started_at
-                        if elapsed >= cfg.hold_seconds:
-                            if not dev and round_idx < len(rounds) - 1:
-                                state = State.ROUND_COMPLETE
-                                round_complete_at = now
-                            else:
-                                state = State.COMPLETE
-                                completed_at = now
+                    if elapsed >= cfg.hold_seconds:
+                        if not dev and round_idx < len(rounds) - 1:
+                            state = State.ROUND_COMPLETE
+                            round_complete_at = now
                         else:
-                            ui.draw_countdown(display, cfg.hold_seconds - elapsed, cfg.hold_seconds)
+                            state = State.COMPLETE
+                            completed_at = now
+                    elif elapsed > 0.0:
+                        ui.draw_countdown(display, cfg.hold_seconds - elapsed, cfg.hold_seconds)
 
             elif state == State.ROUND_COMPLETE:
                 ui.draw_round_complete(display, round_idx + 2,
@@ -200,11 +221,10 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                     code = next_code()
                     print(f"Round {round_idx + 1} pose code: {code}")
                     state = State.TRIAL
-                    hold_started_at = None
-                    last_all_green_at = None
+                    hold.reset()
                     solved = [False] * n
-                    person_hold = [None] * n
-                    person_green = [None] * n
+                    for clock in person_clocks:
+                        clock.reset()
 
             elif state == State.COMPLETE:
                 ui.draw_complete(display)
@@ -212,8 +232,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                     code = next_code()
                     print(f"Dev mode - next pose code: {code}")
                     state = State.TRIAL
-                    hold_started_at = None
-                    last_all_green_at = None
+                    hold.reset()
 
             if show_info:
                 ui.draw_info_overlay(display, cfg.hold_seconds, cfg.confidence_threshold,
@@ -235,11 +254,10 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                 print(f"New pose code: {code}")
                 state = State.TRIAL if dev else State.LINEUP
                 lineup_full_since = None
-                hold_started_at = None
-                last_all_green_at = None
+                hold.reset()
                 solved = [False] * n
-                person_hold = [None] * n
-                person_green = [None] * n
+                for clock in person_clocks:
+                    clock.reset()
     finally:
         detector.close()
         cap.release()

@@ -183,6 +183,11 @@ def score_pose_b(lm, t: PoseTuning) -> PoseResult:
         c.add(part, _at_least(elbow, t.b_elbow_straight_zero, t.b_elbow_straight_min))
 
     torso = _torso_length(lm)
+    apart = _at_least(_dist(lm[L_WRIST], lm[R_WRIST]) / torso,
+                      t.b_wrists_apart_zero, t.b_wrists_apart_min)
+    c.add(L_ARM, apart)
+    c.add(R_ARM, apart)
+
     leg_raise = (lm[L_ANKLE].y - lm[R_ANKLE].y) / torso  # positive = right ankle higher
     c.add(R_LEG, _at_least(leg_raise, t.b_leg_raise_zero, t.b_leg_raise_min))
 
@@ -204,7 +209,9 @@ def score_pose_c(lm, t: PoseTuning) -> PoseResult:
         c.add(part, _trapezoid(knee_angle, -1.0, 0.0, t.c_knee_bend_ideal_hi, t.c_knee_bend_zero))
 
     hip_y = (lm[L_HIP].y + lm[R_HIP].y) / 2
-    knee_y = (lm[L_KNEE].y + lm[R_KNEE].y) / 2
+    # The LOWER knee, not the average: with one knee lifted (the knee hug, H)
+    # the average sits at hip level and fakes a deep squat.
+    knee_y = max(lm[L_KNEE].y, lm[R_KNEE].y)
     hip_drop = (knee_y - hip_y) / torso  # small when hips are low
     c.add(TORSO, _trapezoid(hip_drop, -1.0, -0.5, t.c_hip_drop_ideal_hi, t.c_hip_drop_zero))
 
@@ -279,8 +286,8 @@ def score_pose_e(lm, t: PoseTuning) -> PoseResult:
         down_angle = _angle_from_vertical_up(lm[d_sh], lm[d_wr])
         c.add(d_part, _at_least(down_angle, t.e_down_arm_angle_zero, t.e_down_arm_angle_min))
         d_hip = lm[L_HIP] if d_part == L_ARM else lm[R_HIP]
-        pinned = abs(lm[d_wr].x - d_hip.x) / torso
-        c.add(d_part, _at_most(pinned, t.e_down_wrist_tuck_tol, t.e_down_wrist_tuck_zero))
+        pinned = _dist(lm[d_wr], d_hip) / torso
+        c.add(d_part, _at_most(pinned, t.e_down_wrist_to_hip_max, t.e_down_wrist_to_hip_zero))
 
         for part, sh, el, wr in (up, down):
             elbow = _angle_deg(lm[sh], lm[el], lm[wr])

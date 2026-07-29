@@ -31,8 +31,8 @@ let dev = false;
 let initialRoundIdx = 0;
 
 let state, code, roundIdx, devIndex;
-let lineupFullSince, detectedAt, holdStartedAt, lastAllGreenAt, completedAt, roundCompleteAt;
-let solved, personHold, personGreen;
+let lineupFullSince, detectedAt, completedAt, roundCompleteAt;
+let solved, hold, personClocks;
 let showInfo = false;
 let showHint = false;
 let lastVideoTime = -1;
@@ -57,12 +57,38 @@ function nextCode() {
   return generateCode(rounds[roundIdx], n);
 }
 
+// Counts how long a pose has been held. Time accumulates ONLY on frames where
+// the pose is actually good. A break shorter than the grace period pauses the
+// clock (so detector jitter does not punish anyone); a longer break clears it.
+// With grace at 0 any red frame resets the hold immediately.
+class HoldClock {
+  constructor(graceSeconds) {
+    this.grace = graceSeconds;
+    this.reset();
+  }
+  reset() {
+    this.held = 0.0;
+    this.greenAt = null; // previous green frame, null if the last frame was red
+    this.brokeAt = null; // when the current red streak started
+  }
+  update(green, now) {
+    if (green) {
+      if (this.greenAt !== null) this.held += now - this.greenAt;
+      this.greenAt = now;
+      this.brokeAt = null;
+    } else {
+      this.greenAt = null;
+      if (this.brokeAt === null) this.brokeAt = now;
+      if (now - this.brokeAt >= this.grace) this.held = 0.0;
+    }
+    return this.held;
+  }
+}
+
 function resetTrialState() {
-  holdStartedAt = null;
-  lastAllGreenAt = null;
   solved = Array(n).fill(false);
-  personHold = Array(n).fill(null);
-  personGreen = Array(n).fill(null);
+  hold = new HoldClock(cfg.breakGraceSeconds);
+  personClocks = Array.from({ length: n }, () => new HoldClock(cfg.breakGraceSeconds));
 }
 
 function restart() {
@@ -224,14 +250,8 @@ function loop(nowMs) {
       const x = (cfg.mirrorDisplay ? 1.0 - nose.x : nose.x) * w;
 
       if (mystery) {
-        if (!solved[i]) {
-          if (held) {
-            personGreen[i] = now;
-            personHold[i] = personHold[i] ?? now;
-            if (now - personHold[i] >= cfg.holdSeconds) solved[i] = true;
-          } else if (personGreen[i] === null || now - personGreen[i] > cfg.breakGraceSeconds) {
-            personHold[i] = null;
-          }
+        if (!solved[i] && personClocks[i].update(held, now) >= cfg.holdSeconds) {
+          solved[i] = true;
         }
         statuses[i] = solved[i];
         // The skeleton IS the puzzle feedback: always shown
@@ -245,7 +265,7 @@ function loop(nowMs) {
 
     if (mystery) {
       const holdState = (i) =>
-        solved[i] || personHold[i] === null ? null : cfg.holdSeconds - (now - personHold[i]);
+        solved[i] || personClocks[i].held <= 0 ? null : cfg.holdSeconds - personClocks[i].held;
       ui.drawStatusCircles(ctx, w, h, solved.map((s, i) => [s, holdState(i)]), cfg.holdSeconds);
       ui.drawPersonCircles(ctx, w, h,
         anchors.map((a, i) => ({ x: a.x, y: a.y, solved: solved[i], remaining: holdState(i) })),
@@ -261,29 +281,21 @@ function loop(nowMs) {
       }
     } else {
       const allGreen = people.length >= n && statuses.every(Boolean);
-      if (allGreen) {
-        lastAllGreenAt = now;
-        holdStartedAt = holdStartedAt ?? now;
-      } else if (lastAllGreenAt === null || now - lastAllGreenAt > cfg.breakGraceSeconds) {
-        holdStartedAt = null;
-      }
+      const elapsed = hold.update(allGreen, now);
 
       ui.drawPoseCode(ctx, w, h, [...code], statuses);
       ui.drawPersonLetters(ctx, w, h, anchors);
 
-      if (holdStartedAt !== null) {
-        const elapsed = now - holdStartedAt;
-        if (elapsed >= cfg.holdSeconds) {
-          if (!dev && roundIdx < rounds.length - 1) {
-            state = State.ROUND_COMPLETE;
-            roundCompleteAt = now;
-          } else {
-            state = State.COMPLETE;
-            completedAt = now;
-          }
+      if (elapsed >= cfg.holdSeconds) {
+        if (!dev && roundIdx < rounds.length - 1) {
+          state = State.ROUND_COMPLETE;
+          roundCompleteAt = now;
         } else {
-          ui.drawCountdown(ctx, w, h, cfg.holdSeconds - elapsed, cfg.holdSeconds);
+          state = State.COMPLETE;
+          completedAt = now;
         }
+      } else if (elapsed > 0) {
+        ui.drawCountdown(ctx, w, h, cfg.holdSeconds - elapsed, cfg.holdSeconds);
       }
     }
 

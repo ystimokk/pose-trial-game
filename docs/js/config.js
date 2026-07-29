@@ -20,7 +20,12 @@ export const CONFIG = {
   // --- Flow timing ---
   lineupStableSeconds: 1.5,       // n people must be seen this long before start
   detectedMessageSeconds: 3.0,    // "Detected n adventurers..." display time
-  breakGraceSeconds: 0.4,         // forgive a wobble shorter than this
+  // Hold time only ever accumulates while the pose is actually green. This
+  // grace lets a break shorter than the given time PAUSE the clock instead of
+  // clearing it; red time is never credited either way. At 0 any red frame
+  // resets the hold immediately, which is the clearest feedback for kids -
+  // the wiggle room lives in the pose bands below, not in the timer.
+  breakGraceSeconds: 0.0,
   roundAdvanceSeconds: 4.0,       // "round complete" interstitial duration
   devAdvanceSeconds: 3.0,         // dev mode: pause on "complete" before next pose
 
@@ -55,32 +60,38 @@ export const CONFIG = {
     aElbowBelowWristZero: -0.05,
     aElbowTuckTol: 0.32,
     aElbowTuckZero: 0.80,
-    aLegRaiseMin: 0.07,
-    aLegRaiseZero: 0.0,
+    // Saturates at a modest lift with a wide ramp below it, so a raised foot
+    // that sinks a little stays green instead of flickering.
+    aLegRaiseMin: 0.10,
+    aLegRaiseZero: -0.02, // but level feet must NOT earn much credit
     aKneeBendIdealHi: 145.0,
     aKneeBendZero: 172.0,
 
     // Pose B: tilted X. The lower edge of the left-arm band stays meaningful:
     // a near-vertical left arm is the tree pose (F), not the tilted X. The
     // upper edge keeps the pose narrow - past ~40 degrees it is a wingspan.
-    bLeftArmDiagLo: 20.0,
+    bLeftArmDiagLo: 17.0,
     bLeftArmDiagHi: 38.0,
-    bLeftArmDiagZeroLo: 11.0,
+    bLeftArmDiagZeroLo: 5.0,
     bLeftArmDiagZeroHi: 62.0,
     bRightArmVertHi: 22.0,
     bRightArmVertZero: 52.0,
     bElbowStraightMin: 135.0,
     bElbowStraightZero: 90.0,
-    bLegRaiseMin: 0.035,
-    bLegRaiseZero: 0.0,
+    // The arms make an X, so the hands are far apart. Without this the pose is
+    // under-specified: the tree (F) satisfies everything else and scores 0.80.
+    bWristsApartMin: 0.55,
+    bWristsApartZero: 0.20,
+    bLegRaiseMin: 0.10,
+    bLegRaiseZero: -0.02,
 
     // Pose C: squat with arms forward
     cKneeBendIdealHi: 145.0,
     cKneeBendZero: 178.0,
     cHipDropIdealHi: 0.62,
-    cHipDropZero: 0.95,
+    cHipDropZero: 1.15,
     cWristHeightTol: 0.45,
-    cWristHeightZero: 0.85,
+    cWristHeightZero: 0.95,
     cElbowExtendedMin: 100.0,
     cElbowExtendedZero: 60.0,
 
@@ -91,10 +102,10 @@ export const CONFIG = {
     dKneeBendZero: 165.0,
     dHipDropIdealHi: 0.35,
     dHipDropZero: 0.85,
-    dHandsBelowKneeMin: 0.28,
-    dHandsBelowKneeZero: -0.10,
-    dKneesOutMin: 0.25,
-    dKneesOutZero: -0.05,
+    dHandsBelowKneeMin: 0.15,
+    dHandsBelowKneeZero: -0.25,
+    dKneesOutMin: 0.15,
+    dKneesOutZero: -0.20,
 
     // Pose E: rocket (one arm straight up, the other pressed down, feet together)
     eUpArmAngleMax: 25.0,
@@ -105,10 +116,12 @@ export const CONFIG = {
     eElbowStraightZero: 95.0,
     eDownArmAngleMin: 162.0,
     eDownArmAngleZero: 125.0,
-    eDownWristTuckTol: 0.30,
-    eDownWristTuckZero: 0.70,
+    // Distance to the hip, not just horizontal offset: an arm raised straight up
+    // is also close to the hip in x, and would otherwise count as "pinned down".
+    eDownWristToHipMax: 0.55,
+    eDownWristToHipZero: 1.20,
     eFeetTogetherMax: 0.30,
-    eFeetTogetherZero: 0.75,
+    eFeetTogetherZero: 1.00,
     eLegStraightMin: 150.0,
     eLegStraightZero: 105.0,
 
@@ -120,27 +133,27 @@ export const CONFIG = {
     fElbowStraightMin: 135.0,
     fElbowStraightZero: 90.0,
     fHandsTogetherMax: 0.40,
-    fHandsTogetherZero: 0.75,
+    fHandsTogetherZero: 1.05,
 
     // Pose G: archer aiming at the sky (bow arm up on a diagonal rather than
     // out to the side: same shape, a third of the floor space). Stance is
     // normalized by torso length, robust to turning.
     gBowArmIdealLo: 15.0,
-    gBowArmIdealHi: 40.0,
-    gBowArmZeroLo: 4.0,
-    gBowArmZeroHi: 65.0,
+    gBowArmIdealHi: 42.0,
+    gBowArmZeroLo: 2.0,
+    gBowArmZeroHi: 75.0,
     gStraightElbowMin: 135.0,
     gStraightElbowZero: 90.0,
-    gBowWristFromFaceMin: 0.95,
-    gBowWristFromFaceZero: 0.45,
+    gBowWristFromFaceMin: 0.80,
+    gBowWristFromFaceZero: 0.30,
     gBentElbowLo: 25.0,
     gBentElbowHi: 125.0,
     gBentElbowZeroLo: 5.0,
     gBentElbowZeroHi: 155.0,
     gWristToChinMax: 0.50,
-    gWristToChinZero: 0.85,
-    gStanceWidthMin: 0.45,
-    gStanceWidthZero: 0.12,
+    gWristToChinZero: 1.10,
+    gStanceWidthMin: 0.35,
+    gStanceWidthZero: 0.0,
 
     // Pose H: knee hug
     hKneeLiftMin: 0.06,

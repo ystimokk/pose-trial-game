@@ -34,8 +34,10 @@ class PoseTuning:
     a_elbow_below_wrist_zero: float = -0.05
     a_elbow_tuck_tol: float = 0.32       # |elbow.x - shoulder.x| / torso; elbows stay in
     a_elbow_tuck_zero: float = 0.80
-    a_leg_raise_min: float = 0.07        # left ankle above right ankle (fraction of torso)
-    a_leg_raise_zero: float = 0.0
+    # Saturates at a modest lift with a wide ramp below it, so a raised foot
+    # that sinks a little stays green instead of flickering.
+    a_leg_raise_min: float = 0.10        # left ankle above right ankle (fraction of torso)
+    a_leg_raise_zero: float = -0.02      # but level feet must NOT earn much credit
     a_knee_bend_ideal_hi: float = 145.0  # left knee angle at or below this = bent enough
     a_knee_bend_zero: float = 172.0
 
@@ -44,25 +46,28 @@ class PoseTuning:
     # pose (F), not the tilted X, so it must not score as "diagonal". The upper
     # edge is what keeps the pose narrow - an arm out past ~45 degrees is a
     # wingspan, not a tilt.
-    b_left_arm_diag_lo: float = 20.0     # left arm angle from vertical, ideal band
+    b_left_arm_diag_lo: float = 17.0     # left arm angle from vertical, ideal band
     b_left_arm_diag_hi: float = 38.0
-    b_left_arm_diag_zero_lo: float = 11.0
+    b_left_arm_diag_zero_lo: float = 5.0
     b_left_arm_diag_zero_hi: float = 62.0
     b_right_arm_vert_hi: float = 22.0    # right arm within this angle of vertical
     b_right_arm_vert_zero: float = 52.0
     b_elbow_straight_min: float = 135.0
     b_elbow_straight_zero: float = 90.0
-    b_leg_raise_min: float = 0.035       # right ankle above left ankle (fraction of torso)
-    b_leg_raise_ideal: float = 0.15
-    b_leg_raise_zero: float = 0.0
+    # The arms make an X, so the hands are far apart. Without this the pose is
+    # under-specified: the tree (F) satisfies everything else and scores 0.80.
+    b_wrists_apart_min: float = 0.55     # wrist-to-wrist distance (fraction of torso)
+    b_wrists_apart_zero: float = 0.20
+    b_leg_raise_min: float = 0.10        # right ankle above left ankle (fraction of torso)
+    b_leg_raise_zero: float = -0.02
 
     # --- Pose C: squat with arms forward ---
     c_knee_bend_ideal_hi: float = 145.0  # knee angle at or below this = fully bent enough
     c_knee_bend_zero: float = 178.0
     c_hip_drop_ideal_hi: float = 0.62    # (knee.y - hip.y) / torso; small = deep squat
-    c_hip_drop_zero: float = 0.95
+    c_hip_drop_zero: float = 1.15
     c_wrist_height_tol: float = 0.45     # |wrist.y - shoulder.y| / torso
-    c_wrist_height_zero: float = 0.85
+    c_wrist_height_zero: float = 0.95
     c_elbow_extended_min: float = 100.0  # arms reaching forward, not tucked
     c_elbow_extended_zero: float = 60.0
 
@@ -76,10 +81,12 @@ class PoseTuning:
     e_elbow_straight_zero: float = 95.0
     e_down_arm_angle_min: float = 162.0   # pressed arm points down (180 = straight down)
     e_down_arm_angle_zero: float = 125.0
-    e_down_wrist_tuck_tol: float = 0.30   # |wrist.x - hip.x| / torso; arm pinned to the side
-    e_down_wrist_tuck_zero: float = 0.70
+    # Distance to the hip, not just horizontal offset: an arm raised straight up
+    # is also close to the hip in x, and would otherwise count as "pinned down".
+    e_down_wrist_to_hip_max: float = 0.55  # wrist near the hip (fraction of torso)
+    e_down_wrist_to_hip_zero: float = 1.20
     e_feet_together_max: float = 0.30     # ankle spread (fraction of torso)
-    e_feet_together_zero: float = 0.75
+    e_feet_together_zero: float = 1.00
     e_leg_straight_min: float = 150.0     # standing tall, both knees straight
     e_leg_straight_zero: float = 105.0
 
@@ -91,30 +98,30 @@ class PoseTuning:
     f_elbow_straight_min: float = 135.0
     f_elbow_straight_zero: float = 90.0
     f_hands_together_max: float = 0.40    # wrist-to-wrist distance (fraction of torso)
-    f_hands_together_zero: float = 0.75
+    f_hands_together_zero: float = 1.05
 
     # --- Pose G: archer aiming at the sky (bow arm up on a diagonal, other
     # elbow bent pulling to the chin, feet a little apart) ---
     # The bow arm points up rather than out to the side: same shape, a third
     # of the floor space.
     g_bow_arm_ideal_lo: float = 15.0       # bow arm angle from vertical
-    g_bow_arm_ideal_hi: float = 40.0
-    g_bow_arm_zero_lo: float = 4.0
-    g_bow_arm_zero_hi: float = 65.0
+    g_bow_arm_ideal_hi: float = 42.0
+    g_bow_arm_zero_lo: float = 2.0
+    g_bow_arm_zero_hi: float = 75.0
     g_straight_elbow_min: float = 135.0
     g_straight_elbow_zero: float = 90.0
-    g_bow_wrist_from_face_min: float = 0.95  # bow hand reaches away from the face
-    g_bow_wrist_from_face_zero: float = 0.45
+    g_bow_wrist_from_face_min: float = 0.80  # bow hand reaches away from the face
+    g_bow_wrist_from_face_zero: float = 0.30
     g_bent_elbow_lo: float = 25.0          # drawing-arm elbow angle band
     g_bent_elbow_hi: float = 125.0
     g_bent_elbow_zero_lo: float = 5.0
     g_bent_elbow_zero_hi: float = 155.0
     g_wrist_to_chin_max: float = 0.50      # bent-arm wrist near the chin (fraction of torso)
-    g_wrist_to_chin_zero: float = 0.85
+    g_wrist_to_chin_zero: float = 1.10
     # Ankle spread normalized by torso length, NOT shoulder width: shoulders
     # collapse in x when the archer turns sideways, torso length doesn't.
-    g_stance_width_min: float = 0.45
-    g_stance_width_zero: float = 0.12
+    g_stance_width_min: float = 0.35
+    g_stance_width_zero: float = 0.0
 
     # --- Pose H: knee hug (knee pulled to chest with both hands) ---
     h_knee_lift_min: float = 0.06          # raised knee above hip (fraction of torso)
@@ -134,10 +141,10 @@ class PoseTuning:
     d_knee_bend_zero: float = 165.0
     d_hip_drop_ideal_hi: float = 0.35    # (knee.y - hip.y) / torso; hips down at knee level
     d_hip_drop_zero: float = 0.85
-    d_hands_below_knee_min: float = 0.28  # wrist below the knee (fraction of torso)
-    d_hands_below_knee_zero: float = -0.10
-    d_knees_out_min: float = 0.25        # knee spread beyond ankle spread (fraction of torso)
-    d_knees_out_zero: float = -0.05
+    d_hands_below_knee_min: float = 0.15  # wrist below the knee (fraction of torso)
+    d_hands_below_knee_zero: float = -0.25
+    d_knees_out_min: float = 0.15        # knee spread beyond ankle spread (fraction of torso)
+    d_knees_out_zero: float = -0.20
 
 
 @dataclass
@@ -164,7 +171,12 @@ class AppConfig:
     # --- Flow timing ---
     lineup_stable_seconds: float = 1.5     # n people must be seen this long before start
     detected_message_seconds: float = 3.0  # "Detected n adventurers..." display time
-    break_grace_seconds: float = 0.4       # forgive a wobble shorter than this
+    # Hold time only ever accumulates while the pose is actually green. This
+    # grace lets a break shorter than the given time PAUSE the clock instead of
+    # clearing it; red time is never credited either way. At 0 any red frame
+    # resets the hold immediately, which is the clearest feedback for kids -
+    # the wiggle room lives in the pose bands below, not in the timer.
+    break_grace_seconds: float = 0.0
     round_advance_seconds: float = 4.0     # "round complete" interstitial before the next round
     dev_advance_seconds: float = 3.0       # dev mode: pause on "complete" before next pose
 

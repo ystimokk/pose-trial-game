@@ -115,7 +115,7 @@ All numeric parameters live in `pose_trial/config.py`:
 
 - `AppConfig` — gameplay values: confidence threshold (default **0.85**, with
   per-pose overrides in `confidence_overrides`, e.g. D at 0.80),
-  hold duration (default **5 s**), the wobble grace period (default **0.4 s**),
+  hold duration (default **5 s**), the break grace period (default **0 s**),
   max participants (default **5**), the round alphabets, flow timings, camera
   settings, and mirror display.
 - `PoseTuning` — geometry tolerances for each pose scorer (angle bands,
@@ -129,11 +129,19 @@ Only `n` is dynamic; everything else is fixed per build via `config.py`.
 ### Difficulty
 
 The defaults are deliberately forgiving so kids succeed rather than fight the
-detector: each pose has wide "ideal" bands that score a full 1.0, the bar to
-turn green is 85%, and a brief wobble won't reset the hold countdown. The
-bands are still narrow enough that each pose only matches itself — the closest
-any wrong pose comes to passing is 0.81 against an 0.85 bar.
+detector: each pose has wide "ideal" bands that score a full 1.0 and the bar to
+turn green is 85%. The bands are still narrow enough that each pose only
+matches itself — the closest any wrong pose comes to passing is 0.81 against
+an 0.85 bar.
+
+Forgiveness lives in the pose geometry, not in the timer. The hold countdown
+only advances on frames where every letter is green, so a red letter always
+stops the clock; at the default `break_grace_seconds` of 0 it resets outright.
+What keeps a letter from flickering is the size of the passing region: on the
+tightest pose a single joint can drift about 0.34 torso-lengths (roughly 17 cm
+on a kid) before the pose goes red, and most poses allow 0.5 or more.
 
 To make it harder, raise `confidence_threshold` (0.95+ feels strict) and/or
-narrow the ideal bands in `PoseTuning`. To make it easier still, lower the
-threshold toward 0.75 and raise `break_grace_seconds`.
+narrow the ideal bands in `PoseTuning`. To give kids more physical slack,
+widen the ideal bands and push the matching zero points further out — lowering
+the threshold alone tends to create collisions between poses instead.

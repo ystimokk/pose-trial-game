@@ -155,6 +155,11 @@ function scorePoseB(lm, t) {
   }
 
   const torso = torsoLength(lm);
+  const apart = atLeast(dist(lm[L_WRIST], lm[R_WRIST]) / torso,
+                        t.bWristsApartZero, t.bWristsApartMin);
+  c.add(L_ARM, apart);
+  c.add(R_ARM, apart);
+
   const legRaise = (lm[L_ANKLE].y - lm[R_ANKLE].y) / torso; // + = right ankle higher
   c.add(R_LEG, atLeast(legRaise, t.bLegRaiseZero, t.bLegRaiseMin));
 
@@ -175,7 +180,9 @@ function scorePoseC(lm, t) {
   }
 
   const hipY = (lm[L_HIP].y + lm[R_HIP].y) / 2;
-  const kneeY = (lm[L_KNEE].y + lm[R_KNEE].y) / 2;
+  // The LOWER knee, not the average: with one knee lifted (the knee hug, H)
+  // the average sits at hip level and fakes a deep squat.
+  const kneeY = Math.max(lm[L_KNEE].y, lm[R_KNEE].y);
   const hipDrop = (kneeY - hipY) / torso;
   c.add(TORSO, trapezoid(hipDrop, -1.0, -0.5, t.cHipDropIdealHi, t.cHipDropZero));
 
@@ -244,8 +251,8 @@ function scorePoseE(lm, t) {
     const downAngle = angleFromVerticalUp(lm[dSh], lm[dWr]);
     c.add(dPart, atLeast(downAngle, t.eDownArmAngleZero, t.eDownArmAngleMin));
     const dHip = dPart === L_ARM ? lm[L_HIP] : lm[R_HIP];
-    const pinned = Math.abs(lm[dWr].x - dHip.x) / torso;
-    c.add(dPart, atMost(pinned, t.eDownWristTuckTol, t.eDownWristTuckZero));
+    const pinned = dist(lm[dWr], dHip) / torso;
+    c.add(dPart, atMost(pinned, t.eDownWristToHipMax, t.eDownWristToHipZero));
 
     for (const [part, sh, el, wr] of [up, down]) {
       const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
