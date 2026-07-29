@@ -51,7 +51,7 @@ Round 1:
 
 | Letter | Pose |
 | --- | --- |
-| A | Crane guard: both fists up by the chin with the elbows folded in, left knee raised and bent |
+| A | Crane guard: forearms straight up with both fists beside the face, elbows tucked in, left knee raised and bent |
 | B | Tilted X: left arm on a diagonal, right arm straight up, right leg slightly raised |
 | C | Squat down with both arms reaching forward |
 | D | Frog: crouch all the way down, knees pushed out past the feet, both hands to the floor |
@@ -62,7 +62,7 @@ Round 2 (harder - balance and coordination):
 | --- | --- |
 | E | Rocket: one arm shot straight up past the head, the other pressed down against the side, feet together |
 | F | Tree: one foot against the other knee, arms overhead with hands together |
-| G | Archer: bow arm aimed up at the sky, other elbow bent pulling the wrist to the chin |
+| G | Archer: bow arm aimed up at the sky, other elbow bent pulling the wrist to the chin, one leg lifted (either leg) |
 | H | Knee hug: pull one knee to the chest with both hands while standing tall |
 
 ## Setup

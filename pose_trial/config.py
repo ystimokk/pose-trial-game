@@ -58,6 +58,10 @@ class PoseTuning:
     # under-specified: the tree (F) satisfies everything else and scores 0.80.
     b_wrists_apart_min: float = 0.55     # wrist-to-wrist distance (fraction of torso)
     b_wrists_apart_zero: float = 0.20
+    # The raised hand must clear the head. A real B clears it by ~0.5 torso, so
+    # this costs nothing, but it stops the archer's fist-at-the-chin scoring as B.
+    b_right_wrist_above_nose_min: float = 0.25   # wrist above nose (fraction of torso)
+    b_right_wrist_above_nose_zero: float = 0.0   # level with the nose earns nothing
     b_leg_raise_min: float = 0.10        # right ankle above left ankle (fraction of torso)
     b_leg_raise_zero: float = -0.02
 
@@ -101,7 +105,7 @@ class PoseTuning:
     f_hands_together_zero: float = 1.05
 
     # --- Pose G: archer aiming at the sky (bow arm up on a diagonal, other
-    # elbow bent pulling to the chin, feet a little apart) ---
+    # elbow bent pulling to the chin, one leg lifted) ---
     # The bow arm points up rather than out to the side: same shape, a third
     # of the floor space.
     g_bow_arm_ideal_lo: float = 15.0       # bow arm angle from vertical
@@ -118,10 +122,10 @@ class PoseTuning:
     g_bent_elbow_zero_hi: float = 155.0
     g_wrist_to_chin_max: float = 0.50      # bent-arm wrist near the chin (fraction of torso)
     g_wrist_to_chin_zero: float = 1.10
-    # Ankle spread normalized by torso length, NOT shoulder width: shoulders
-    # collapse in x when the archer turns sideways, torso length doesn't.
-    g_stance_width_min: float = 0.35
-    g_stance_width_zero: float = 0.0
+    # Height difference, not ankle spread: a lifted leg reads reliably however
+    # the archer is turned, and keeps the pose narrow. Either leg may lift.
+    g_leg_lift_min: float = 0.10       # one ankle clearly above the other (fraction of torso)
+    g_leg_lift_zero: float = 0.0       # feet level on the floor earns nothing
 
     # --- Pose H: knee hug (knee pulled to chest with both hands) ---
     h_knee_lift_min: float = 0.06          # raised knee above hip (fraction of torso)

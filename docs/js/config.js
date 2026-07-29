@@ -86,6 +86,10 @@ export const CONFIG = {
     // under-specified: the tree (F) satisfies everything else and scores 0.80.
     bWristsApartMin: 0.55,
     bWristsApartZero: 0.20,
+    // The raised hand must clear the head. A real B clears it by ~0.5 torso, so
+    // this costs nothing, but it stops the archer's fist-at-the-chin scoring as B.
+    bRightWristAboveNoseMin: 0.25,
+    bRightWristAboveNoseZero: 0.0,
     bLegRaiseMin: 0.10,
     bLegRaiseZero: -0.02,
 
@@ -156,8 +160,10 @@ export const CONFIG = {
     gBentElbowZeroHi: 155.0,
     gWristToChinMax: 0.50,
     gWristToChinZero: 1.10,
-    gStanceWidthMin: 0.35,
-    gStanceWidthZero: 0.0,
+    // Height difference, not ankle spread: a lifted leg reads reliably however
+    // the archer is turned, and keeps the pose narrow. Either leg may lift.
+    gLegLiftMin: 0.10,
+    gLegLiftZero: 0.0,
 
     // Pose H: knee hug
     hKneeLiftMin: 0.06,

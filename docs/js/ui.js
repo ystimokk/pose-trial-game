@@ -208,10 +208,10 @@ const POSE_FIGURES = {
     head: [0.5, 0.12],
     lines: [
       [[0.5, 0.20], [0.5, 0.55]],
-      [[0.58, 0.26], [0.61, 0.44]],
-      [[0.61, 0.44], [0.56, 0.23]],
-      [[0.42, 0.26], [0.39, 0.44]],
-      [[0.39, 0.44], [0.44, 0.23]],
+      [[0.58, 0.26], [0.68, 0.46]],
+      [[0.68, 0.46], [0.64, 0.14]],
+      [[0.42, 0.26], [0.32, 0.46]],
+      [[0.32, 0.46], [0.36, 0.14]],
       [[0.5, 0.55], [0.48, 0.92]],
       [[0.5, 0.55], [0.64, 0.62]],
       [[0.64, 0.62], [0.58, 0.78]],
@@ -283,7 +283,8 @@ const POSE_FIGURES = {
       [[0.44, 0.28], [0.34, 0.20]],
       [[0.34, 0.20], [0.46, 0.24]],
       [[0.5, 0.56], [0.44, 0.92]],
-      [[0.5, 0.56], [0.58, 0.92]],
+      [[0.5, 0.56], [0.63, 0.70]],
+      [[0.63, 0.70], [0.59, 0.81]],
     ],
   },
   H: {
@@ -300,13 +301,13 @@ const POSE_FIGURES = {
 };
 
 const POSE_CAPTIONS = {
-  A: "Crane guard: fists up, left knee up",
+  A: "Crane guard: forearms up, left knee up",
   B: "Tilted X, right leg up",
   C: "Squat, arms forward",
   D: "Frog: crouch low, hands down",
   E: "Rocket: one arm up, one arm down",
   F: "Tree: foot on knee, hands up",
-  G: "Archer: aim at the sky",
+  G: "Archer: aim at the sky, one leg up",
   H: "Knee hug: knee to chest",
 };
 

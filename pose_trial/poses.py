@@ -29,13 +29,15 @@ L_ANKLE, R_ANKLE = 27, 28
 L_ARM, R_ARM, L_LEG, R_LEG, TORSO = "left_arm", "right_arm", "left_leg", "right_leg", "torso"
 
 POSE_DESCRIPTIONS = {
-    "A": "Crane guard: fists up by your chin, elbows in, left knee raised and bent",
+    "A": "Crane guard: forearms straight up with your fists beside your face, "
+         "elbows tucked in, left knee raised and bent",
     "B": "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
     "C": "Squat down with both arms reaching forward",
     "D": "Frog: crouch all the way down, knees pushed out, hands to the floor",
     "E": "Rocket: one arm straight up, the other pressed down at your side, feet together",
     "F": "Tree: one foot on the other knee, arms overhead with hands together",
-    "G": "Archer: aim your bow arm at the sky, other elbow bent pulling to the chin",
+    "G": "Archer: aim your bow arm at the sky, other elbow bent pulling to the "
+         "chin, one leg lifted",
     "H": "Knee hug: pull one knee to your chest with both hands",
 }
 
@@ -165,7 +167,8 @@ def score_pose_a(lm, t: PoseTuning) -> PoseResult:
 
 def score_pose_b(lm, t: PoseTuning) -> PoseResult:
     """Tilted X: left arm diagonal, right arm straight up, right leg slightly raised."""
-    needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST, L_ANKLE, R_ANKLE]
+    needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+              L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
         return PoseResult(0.0)
 
@@ -183,6 +186,13 @@ def score_pose_b(lm, t: PoseTuning) -> PoseResult:
         c.add(part, _at_least(elbow, t.b_elbow_straight_zero, t.b_elbow_straight_min))
 
     torso = _torso_length(lm)
+
+    # "Straight up" means the hand clears the head. Free for anyone actually
+    # reaching up, and it keeps a hand held at the chin (pose G) out of B.
+    above = (lm[NOSE].y - lm[R_WRIST].y) / torso
+    c.add(R_ARM, _at_least(above, t.b_right_wrist_above_nose_zero,
+                           t.b_right_wrist_above_nose_min))
+
     apart = _at_least(_dist(lm[L_WRIST], lm[R_WRIST]) / torso,
                       t.b_wrists_apart_zero, t.b_wrists_apart_min)
     c.add(L_ARM, apart)
@@ -335,8 +345,8 @@ def score_pose_f(lm, t: PoseTuning) -> PoseResult:
 
 def score_pose_g(lm, t: PoseTuning) -> PoseResult:
     """Archer: the bow arm straight out on an upward diagonal, the other elbow
-    bent with the wrist drawn to the chin, feet a little apart. Aiming up
-    instead of sideways keeps the pose narrow. Either arm may draw."""
+    bent with the wrist drawn to the chin, one leg lifted. Aiming up instead of
+    sideways keeps the pose narrow. Either arm may draw, either leg may lift."""
     needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
               L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
@@ -344,8 +354,8 @@ def score_pose_g(lm, t: PoseTuning) -> PoseResult:
 
     torso = _torso_length(lm)
 
-    stance = abs(lm[L_ANKLE].x - lm[R_ANKLE].x) / torso
-    stance_score = _at_least(stance, t.g_stance_width_zero, t.g_stance_width_min)
+    lift = abs(lm[L_ANKLE].y - lm[R_ANKLE].y) / torso  # either foot may be the raised one
+    lift_score = _at_least(lift, t.g_leg_lift_zero, t.g_leg_lift_min)
 
     options = []
     for straight, bent in ((ARMS[0], ARMS[1]), (ARMS[1], ARMS[0])):
@@ -367,8 +377,8 @@ def score_pose_g(lm, t: PoseTuning) -> PoseResult:
         chin = _dist(lm[b_wr], lm[NOSE]) / torso
         c.add(b_part, _at_most(chin, t.g_wrist_to_chin_max, t.g_wrist_to_chin_zero))
 
-        c.add(L_LEG, stance_score)
-        c.add(R_LEG, stance_score)
+        c.add(L_LEG, lift_score)
+        c.add(R_LEG, lift_score)
 
         options.append(c)
 

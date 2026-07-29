@@ -17,13 +17,15 @@ export const L_LEG = "left_leg", R_LEG = "right_leg";
 export const TORSO = "torso";
 
 export const POSE_DESCRIPTIONS = {
-  A: "Crane guard: fists up by your chin, elbows in, left knee raised and bent",
+  A: "Crane guard: forearms straight up with your fists beside your face, " +
+     "elbows tucked in, left knee raised and bent",
   B: "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
   C: "Squat down with both arms reaching forward",
   D: "Frog: crouch all the way down, knees pushed out, hands to the floor",
   E: "Rocket: one arm straight up, the other pressed down at your side, feet together",
   F: "Tree: one foot on the other knee, arms overhead with hands together",
-  G: "Archer: aim your bow arm at the sky, other elbow bent pulling to the chin",
+  G: "Archer: aim your bow arm at the sky, other elbow bent pulling to the " +
+     "chin, one leg lifted",
   H: "Knee hug: pull one knee to your chest with both hands",
 };
 
@@ -137,7 +139,8 @@ function scorePoseA(lm, t) {
 }
 
 function scorePoseB(lm, t) {
-  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST, L_ANKLE, R_ANKLE];
+  const needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+                  L_ANKLE, R_ANKLE];
   if (!visibilityOk(lm, needed, t)) return FAIL;
 
   const c = new Criteria();
@@ -155,6 +158,12 @@ function scorePoseB(lm, t) {
   }
 
   const torso = torsoLength(lm);
+
+  // "Straight up" means the hand clears the head. Free for anyone actually
+  // reaching up, and it keeps a hand held at the chin (pose G) out of B.
+  const above = (lm[NOSE].y - lm[R_WRIST].y) / torso;
+  c.add(R_ARM, atLeast(above, t.bRightWristAboveNoseZero, t.bRightWristAboveNoseMin));
+
   const apart = atLeast(dist(lm[L_WRIST], lm[R_WRIST]) / torso,
                         t.bWristsApartZero, t.bWristsApartMin);
   c.add(L_ARM, apart);
@@ -300,7 +309,7 @@ function scorePoseF(lm, t) {
 }
 
 // Archer: the bow arm points up on a diagonal rather than out to the side,
-// which keeps the pose narrow. Either arm may draw.
+// which keeps the pose narrow. Either arm may draw, either leg may lift.
 function scorePoseG(lm, t) {
   const needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
                   L_ANKLE, R_ANKLE];
@@ -308,8 +317,9 @@ function scorePoseG(lm, t) {
 
   const torso = torsoLength(lm);
 
-  const stance = Math.abs(lm[L_ANKLE].x - lm[R_ANKLE].x) / torso;
-  const stanceScore = atLeast(stance, t.gStanceWidthZero, t.gStanceWidthMin);
+  // Either foot may be the raised one.
+  const lift = Math.abs(lm[L_ANKLE].y - lm[R_ANKLE].y) / torso;
+  const liftScore = atLeast(lift, t.gLegLiftZero, t.gLegLiftMin);
 
   const options = [];
   for (const [straight, bent] of [[ARMS[0], ARMS[1]], [ARMS[1], ARMS[0]]]) {
@@ -332,8 +342,8 @@ function scorePoseG(lm, t) {
     const chin = dist(lm[bWr], lm[NOSE]) / torso;
     c.add(bPart, atMost(chin, t.gWristToChinMax, t.gWristToChinZero));
 
-    c.add(L_LEG, stanceScore);
-    c.add(R_LEG, stanceScore);
+    c.add(L_LEG, liftScore);
+    c.add(R_LEG, liftScore);
 
     options.push(c);
   }
