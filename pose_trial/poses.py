@@ -13,7 +13,6 @@ down. Distances are normalized by torso length so scores are size-invariant.
 
 import math
 from dataclasses import dataclass, field
-from types import SimpleNamespace
 
 from .config import PoseTuning
 
@@ -30,13 +29,13 @@ L_ANKLE, R_ANKLE = 27, 28
 L_ARM, R_ARM, L_LEG, R_LEG, TORSO = "left_arm", "right_arm", "left_leg", "right_leg", "torso"
 
 POSE_DESCRIPTIONS = {
-    "A": "Crane stance: arms high in a Y, left knee raised and bent",
-    "B": "Tilted X: left arm diagonal, right arm straight up, right leg raised",
+    "A": "Crane guard: fists up by your chin, elbows in, left knee raised and bent",
+    "B": "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
     "C": "Squat down with both arms reaching forward",
-    "D": "Frog: arms folded pointing to the sky, legs wide and bent",
-    "E": "Airplane: balance on one leg, torso tilted forward, other leg back, arms along the body",
+    "D": "Frog: crouch all the way down, knees pushed out, hands to the floor",
+    "E": "Rocket: one arm straight up, the other pressed down at your side, feet together",
     "F": "Tree: one foot on the other knee, arms overhead with hands together",
-    "G": "Archer: one arm straight out, other elbow bent pulling to the chin, wide stance",
+    "G": "Archer: aim your bow arm at the sky, other elbow bent pulling to the chin",
     "H": "Knee hug: pull one knee to your chest with both hands",
 }
 
@@ -95,10 +94,6 @@ def _dist(a, b) -> float:
     return math.hypot(a.x - b.x, a.y - b.y)
 
 
-def _midpoint(a, b):
-    return SimpleNamespace(x=(a.x + b.x) / 2, y=(a.y + b.y) / 2)
-
-
 def _angle_deg(a, b, c) -> float:
     """Interior angle at point b, in degrees."""
     v1 = (a.x - b.x, a.y - b.y)
@@ -140,21 +135,25 @@ LEGS = ((L_LEG, L_HIP, L_KNEE, L_ANKLE), (R_LEG, R_HIP, R_KNEE, R_ANKLE))
 
 
 def score_pose_a(lm, t: PoseTuning) -> PoseResult:
-    """Crane stance: both arms straight up-and-out in a Y, left knee raised and bent."""
-    needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+    """Crane guard: both fists up by the chin with the elbows folded in close
+    to the body, left knee raised and bent."""
+    needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
               L_HIP, L_KNEE, L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
         return PoseResult(0.0)
 
+    torso = _torso_length(lm)
     c = _Criteria()
     for part, sh, el, wr in ARMS:
-        arm_angle = _angle_from_vertical_up(lm[sh], lm[wr])
-        c.add(part, _trapezoid(arm_angle, -1.0, t.a_arm_angle_ideal_lo,
-                               t.a_arm_angle_ideal_hi, t.a_arm_angle_zero))
-        elbow = _angle_deg(lm[sh], lm[el], lm[wr])
-        c.add(part, _at_least(elbow, t.a_elbow_straight_zero, t.a_elbow_straight_min))
+        fist = _dist(lm[wr], lm[NOSE]) / torso
+        c.add(part, _at_most(fist, t.a_fist_to_face_max, t.a_fist_to_face_zero))
+        # Elbow angle is useless here - a fist at the chin folds the arm back on
+        # itself, so the 2D angle collapses. Height and tuck describe the guard.
+        drop = (lm[el].y - lm[wr].y) / torso  # positive = elbow under the fist
+        c.add(part, _at_least(drop, t.a_elbow_below_wrist_zero, t.a_elbow_below_wrist_min))
+        tuck = abs(lm[el].x - lm[sh].x) / torso
+        c.add(part, _at_most(tuck, t.a_elbow_tuck_tol, t.a_elbow_tuck_zero))
 
-    torso = _torso_length(lm)
     leg_raise = (lm[R_ANKLE].y - lm[L_ANKLE].y) / torso  # positive = left ankle higher
     c.add(L_LEG, _at_least(leg_raise, t.a_leg_raise_zero, t.a_leg_raise_min))
 
@@ -219,8 +218,9 @@ def score_pose_c(lm, t: PoseTuning) -> PoseResult:
 
 
 def score_pose_d(lm, t: PoseTuning) -> PoseResult:
-    """Frog: goalpost arms (elbows ~90 deg, hands up), legs wide and bent."""
-    needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+    """Frog crouch: all the way down with the hips at knee level, knees pushed
+    out past the feet, and both hands reaching down to the floor."""
+    needed = [L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST,
               L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
         return PoseResult(0.0)
@@ -228,53 +228,68 @@ def score_pose_d(lm, t: PoseTuning) -> PoseResult:
     torso = _torso_length(lm)
     c = _Criteria()
 
-    for part, sh, el, wr in ARMS:
-        elbow = _angle_deg(lm[sh], lm[el], lm[wr])
-        c.add(part, _trapezoid(elbow, t.d_elbow_bend_zero_lo, t.d_elbow_bend_lo,
-                               t.d_elbow_bend_hi, t.d_elbow_bend_zero_hi))
-        wrist_up = (lm[el].y - lm[wr].y) / torso  # positive = wrist above elbow
-        c.add(part, _at_least(wrist_up, 0.0, t.d_wrist_above_elbow_min))
-        elbow_height = abs(lm[el].y - lm[sh].y) / torso
-        c.add(part, _trapezoid(elbow_height, -1.0, 0.0, t.d_elbow_height_tol, t.d_elbow_height_zero))
-
-    shoulder_w = max(1e-6, abs(lm[L_SHOULDER].x - lm[R_SHOULDER].x))
-    ankle_w = abs(lm[L_ANKLE].x - lm[R_ANKLE].x)
-    stance = ankle_w / shoulder_w
-    stance_score = _trapezoid(stance, t.d_stance_width_zero, t.d_stance_width_min,
-                              t.d_stance_width_ideal * 3, t.d_stance_width_ideal * 4)
-
     for part, hip, knee, ankle in LEGS:
-        c.add(part, stance_score)
         knee_angle = _angle_deg(lm[hip], lm[knee], lm[ankle])
         c.add(part, _trapezoid(knee_angle, -1.0, 0.0, t.d_knee_bend_ideal_hi, t.d_knee_bend_zero))
+
+    hip_y = (lm[L_HIP].y + lm[R_HIP].y) / 2
+    knee_y = (lm[L_KNEE].y + lm[R_KNEE].y) / 2
+    hip_drop = (knee_y - hip_y) / torso
+    c.add(TORSO, _trapezoid(hip_drop, -1.0, -0.5, t.d_hip_drop_ideal_hi, t.d_hip_drop_zero))
+
+    for part, wr, knee in ((L_ARM, L_WRIST, L_KNEE), (R_ARM, R_WRIST, R_KNEE)):
+        reach = (lm[wr].y - lm[knee].y) / torso  # positive = hand below the knee
+        c.add(part, _at_least(reach, t.d_hands_below_knee_zero, t.d_hands_below_knee_min))
+
+    knee_w = abs(lm[L_KNEE].x - lm[R_KNEE].x)
+    ankle_w = abs(lm[L_ANKLE].x - lm[R_ANKLE].x)
+    knees_out = _at_least((knee_w - ankle_w) / torso, t.d_knees_out_zero, t.d_knees_out_min)
+    c.add(L_LEG, knees_out)
+    c.add(R_LEG, knees_out)
 
     return c.result()
 
 
 def score_pose_e(lm, t: PoseTuning) -> PoseResult:
-    """Airplane: torso tilted forward, one leg extended back. Arms are not
-    scored - they stay along the body like a figure skater. Either leg may be
-    the raised one; the better-matching side is scored."""
-    needed = [L_SHOULDER, R_SHOULDER, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE]
+    """Rocket: one arm shot straight up past the head, the other pressed
+    straight down against the side, feet together and legs tall. Either arm
+    may be the raised one; the better-matching side is scored."""
+    needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+              L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
         return PoseResult(0.0)
 
     torso = _torso_length(lm)
 
+    feet = abs(lm[L_ANKLE].x - lm[R_ANKLE].x) / torso
+    feet_score = _at_most(feet, t.e_feet_together_max, t.e_feet_together_zero)
+
     options = []
-    for (part, hip, knee, ankle), standing in ((LEGS[0], R_ANKLE), (LEGS[1], L_ANKLE)):
+    for up, down in ((ARMS[0], ARMS[1]), (ARMS[1], ARMS[0])):
+        u_part, u_sh, u_el, u_wr = up
+        d_part, d_sh, d_el, d_wr = down
         c = _Criteria()
 
-        hip_mid = _midpoint(lm[L_HIP], lm[R_HIP])
-        sh_mid = _midpoint(lm[L_SHOULDER], lm[R_SHOULDER])
-        tilt = _angle_from_vertical_up(hip_mid, sh_mid)
-        c.add(TORSO, _trapezoid(tilt, t.e_torso_tilt_zero_lo, t.e_torso_tilt_ideal_lo,
-                                t.e_torso_tilt_ideal_hi, t.e_torso_tilt_zero_hi))
+        up_angle = _angle_from_vertical_up(lm[u_sh], lm[u_wr])
+        c.add(u_part, _at_most(up_angle, t.e_up_arm_angle_max, t.e_up_arm_angle_zero))
+        overhead = (lm[NOSE].y - lm[u_wr].y) / torso  # positive = wrist above the head
+        c.add(u_part, _at_least(overhead, t.e_up_wrist_above_head_zero,
+                                t.e_up_wrist_above_head_min))
 
-        raise_amt = (lm[standing].y - lm[ankle].y) / torso
-        c.add(part, _at_least(raise_amt, t.e_leg_raise_zero, t.e_leg_raise_min))
-        knee_angle = _angle_deg(lm[hip], lm[knee], lm[ankle])
-        c.add(part, _at_least(knee_angle, t.e_knee_straight_zero, t.e_knee_straight_min))
+        down_angle = _angle_from_vertical_up(lm[d_sh], lm[d_wr])
+        c.add(d_part, _at_least(down_angle, t.e_down_arm_angle_zero, t.e_down_arm_angle_min))
+        d_hip = lm[L_HIP] if d_part == L_ARM else lm[R_HIP]
+        pinned = abs(lm[d_wr].x - d_hip.x) / torso
+        c.add(d_part, _at_most(pinned, t.e_down_wrist_tuck_tol, t.e_down_wrist_tuck_zero))
+
+        for part, sh, el, wr in (up, down):
+            elbow = _angle_deg(lm[sh], lm[el], lm[wr])
+            c.add(part, _at_least(elbow, t.e_elbow_straight_zero, t.e_elbow_straight_min))
+
+        for part, hip, knee, ankle in LEGS:
+            c.add(part, feet_score)
+            knee_angle = _angle_deg(lm[hip], lm[knee], lm[ankle])
+            c.add(part, _at_least(knee_angle, t.e_leg_straight_zero, t.e_leg_straight_min))
 
         options.append(c)
 
@@ -312,8 +327,9 @@ def score_pose_f(lm, t: PoseTuning) -> PoseResult:
 
 
 def score_pose_g(lm, t: PoseTuning) -> PoseResult:
-    """Archer: one arm straight out to the side, the other elbow bent with the
-    wrist drawn to the chin, feet in a wide stance. Either arm may draw."""
+    """Archer: the bow arm straight out on an upward diagonal, the other elbow
+    bent with the wrist drawn to the chin, feet a little apart. Aiming up
+    instead of sideways keeps the pose narrow. Either arm may draw."""
     needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
               L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
@@ -331,10 +347,12 @@ def score_pose_g(lm, t: PoseTuning) -> PoseResult:
         c = _Criteria()
 
         arm_angle = _angle_from_vertical_up(lm[s_sh], lm[s_wr])
-        c.add(s_part, _trapezoid(arm_angle, t.g_straight_arm_zero_lo, t.g_straight_arm_ideal_lo,
-                                 t.g_straight_arm_ideal_hi, t.g_straight_arm_zero_hi))
+        c.add(s_part, _trapezoid(arm_angle, t.g_bow_arm_zero_lo, t.g_bow_arm_ideal_lo,
+                                 t.g_bow_arm_ideal_hi, t.g_bow_arm_zero_hi))
         elbow = _angle_deg(lm[s_sh], lm[s_el], lm[s_wr])
         c.add(s_part, _at_least(elbow, t.g_straight_elbow_zero, t.g_straight_elbow_min))
+        reach = _dist(lm[s_wr], lm[NOSE]) / torso  # the bow hand is not a second fist at the chin
+        c.add(s_part, _at_least(reach, t.g_bow_wrist_from_face_zero, t.g_bow_wrist_from_face_min))
 
         bent_angle = _angle_deg(lm[b_sh], lm[b_el], lm[b_wr])
         c.add(b_part, _trapezoid(bent_angle, t.g_bent_elbow_zero_lo, t.g_bent_elbow_lo,

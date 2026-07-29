@@ -40,29 +40,35 @@ export const CONFIG = {
   // torso length unless noted). Mirrors PoseTuning in the Python app.
   // Bands are tuned for kids: the "ideal" range that scores a full 1.0 is
   // generous, and the zero points are far out so being off gives partial
-  // credit instead of a hard fail. ---
+  // credit instead of a hard fail.
+  // Poses are also tuned to be COMPACT: the camera has to fit up to
+  // maxParticipants kids side by side, so no pose asks for a limb stretched
+  // out sideways. Every pose fits in roughly 1.3 torso-lengths of width (a kid
+  // standing still is already 0.75). Widening a band below costs floor space. ---
   tuning: {
     minVisibility: 0.4,
 
-    // Pose A: crane stance (arms up in a Y, left knee raised and bent)
-    aArmAngleIdealLo: 5.0,
-    aArmAngleIdealHi: 60.0,
-    aArmAngleZero: 90.0,
-    aElbowStraightMin: 135.0,
-    aElbowStraightZero: 90.0,
+    // Pose A: crane guard (fists up by the chin, elbows in, left knee raised)
+    aFistToFaceMax: 0.70,
+    aFistToFaceZero: 1.15,
+    aElbowBelowWristMin: 0.30,
+    aElbowBelowWristZero: -0.05,
+    aElbowTuckTol: 0.32,
+    aElbowTuckZero: 0.80,
     aLegRaiseMin: 0.07,
     aLegRaiseZero: 0.0,
     aKneeBendIdealHi: 145.0,
     aKneeBendZero: 172.0,
 
     // Pose B: tilted X. The lower edge of the left-arm band stays meaningful:
-    // a near-vertical left arm is the tree pose (F), not the tilted X.
-    bLeftArmDiagLo: 22.0,
-    bLeftArmDiagHi: 75.0,
-    bLeftArmDiagZeroLo: 10.0,
-    bLeftArmDiagZeroHi: 100.0,
-    bRightArmVertHi: 35.0,
-    bRightArmVertZero: 65.0,
+    // a near-vertical left arm is the tree pose (F), not the tilted X. The
+    // upper edge keeps the pose narrow - past ~40 degrees it is a wingspan.
+    bLeftArmDiagLo: 20.0,
+    bLeftArmDiagHi: 38.0,
+    bLeftArmDiagZeroLo: 11.0,
+    bLeftArmDiagZeroHi: 62.0,
+    bRightArmVertHi: 22.0,
+    bRightArmVertZero: 52.0,
     bElbowStraightMin: 135.0,
     bElbowStraightZero: 90.0,
     bLegRaiseMin: 0.035,
@@ -78,29 +84,33 @@ export const CONFIG = {
     cElbowExtendedMin: 100.0,
     cElbowExtendedZero: 60.0,
 
-    // Pose D: frog
-    dElbowBendLo: 40.0,
-    dElbowBendHi: 135.0,
-    dElbowBendZeroLo: 15.0,
-    dElbowBendZeroHi: 165.0,
-    dWristAboveElbowMin: 0.02,
-    dElbowHeightTol: 0.45,
-    dElbowHeightZero: 0.80,
-    dStanceWidthMin: 1.15,
-    dStanceWidthIdeal: 1.8,
-    dStanceWidthZero: 0.8,
-    dKneeBendIdealHi: 163.0,
-    dKneeBendZero: 178.0,
+    // Pose D: frog crouch (all the way down, knees out, hands to the floor).
+    // The old goalpost arms were replaced: upper arms held out to the side are
+    // the widest thing a body can do.
+    dKneeBendIdealHi: 100.0,
+    dKneeBendZero: 165.0,
+    dHipDropIdealHi: 0.35,
+    dHipDropZero: 0.85,
+    dHandsBelowKneeMin: 0.28,
+    dHandsBelowKneeZero: -0.10,
+    dKneesOutMin: 0.25,
+    dKneesOutZero: -0.05,
 
-    // Pose E: airplane (arms not scored - figure-skater style)
-    eTorsoTiltIdealLo: 35.0,
-    eTorsoTiltIdealHi: 110.0,
-    eTorsoTiltZeroLo: 15.0,
-    eTorsoTiltZeroHi: 140.0,
-    eLegRaiseMin: 0.22,
-    eLegRaiseZero: 0.02,
-    eKneeStraightMin: 135.0,
-    eKneeStraightZero: 90.0,
+    // Pose E: rocket (one arm straight up, the other pressed down, feet together)
+    eUpArmAngleMax: 25.0,
+    eUpArmAngleZero: 55.0,
+    eUpWristAboveHeadMin: 0.25,
+    eUpWristAboveHeadZero: -0.10,
+    eElbowStraightMin: 140.0,
+    eElbowStraightZero: 95.0,
+    eDownArmAngleMin: 162.0,
+    eDownArmAngleZero: 125.0,
+    eDownWristTuckTol: 0.30,
+    eDownWristTuckZero: 0.70,
+    eFeetTogetherMax: 0.30,
+    eFeetTogetherZero: 0.75,
+    eLegStraightMin: 150.0,
+    eLegStraightZero: 105.0,
 
     // Pose F: tree
     fFootToKneeMax: 0.45,
@@ -112,21 +122,25 @@ export const CONFIG = {
     fHandsTogetherMax: 0.40,
     fHandsTogetherZero: 0.75,
 
-    // Pose G: archer (stance normalized by torso length, robust to turning)
-    gStraightArmIdealLo: 60.0,
-    gStraightArmIdealHi: 120.0,
-    gStraightArmZeroLo: 35.0,
-    gStraightArmZeroHi: 150.0,
+    // Pose G: archer aiming at the sky (bow arm up on a diagonal rather than
+    // out to the side: same shape, a third of the floor space). Stance is
+    // normalized by torso length, robust to turning.
+    gBowArmIdealLo: 15.0,
+    gBowArmIdealHi: 40.0,
+    gBowArmZeroLo: 4.0,
+    gBowArmZeroHi: 65.0,
     gStraightElbowMin: 135.0,
     gStraightElbowZero: 90.0,
+    gBowWristFromFaceMin: 0.95,
+    gBowWristFromFaceZero: 0.45,
     gBentElbowLo: 25.0,
     gBentElbowHi: 125.0,
     gBentElbowZeroLo: 5.0,
     gBentElbowZeroHi: 155.0,
     gWristToChinMax: 0.50,
     gWristToChinZero: 0.85,
-    gStanceWidthMin: 0.7,
-    gStanceWidthZero: 0.35,
+    gStanceWidthMin: 0.45,
+    gStanceWidthZero: 0.12,
 
     // Pose H: knee hug
     hKneeLiftMin: 0.06,

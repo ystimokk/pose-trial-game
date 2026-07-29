@@ -17,13 +17,13 @@ export const L_LEG = "left_leg", R_LEG = "right_leg";
 export const TORSO = "torso";
 
 export const POSE_DESCRIPTIONS = {
-  A: "Crane stance: arms high in a Y, left knee raised and bent",
-  B: "Tilted X: left arm diagonal, right arm straight up, right leg raised",
+  A: "Crane guard: fists up by your chin, elbows in, left knee raised and bent",
+  B: "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
   C: "Squat down with both arms reaching forward",
-  D: "Frog: arms folded pointing to the sky, legs wide and bent",
-  E: "Airplane: balance on one leg, torso tilted forward, other leg back, arms along the body",
+  D: "Frog: crouch all the way down, knees pushed out, hands to the floor",
+  E: "Rocket: one arm straight up, the other pressed down at your side, feet together",
   F: "Tree: one foot on the other knee, arms overhead with hands together",
-  G: "Archer: one arm straight out, other elbow bent pulling to the chin, wide stance",
+  G: "Archer: aim your bow arm at the sky, other elbow bent pulling to the chin",
   H: "Knee hug: pull one knee to your chest with both hands",
 };
 
@@ -68,10 +68,6 @@ function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function midpoint(a, b) {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-}
-
 function angleDeg(a, b, c) {
   const v1 = [a.x - b.x, a.y - b.y];
   const v2 = [c.x - b.x, c.y - b.y];
@@ -114,19 +110,23 @@ const LEGS = [
 ];
 
 function scorePoseA(lm, t) {
-  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+  const needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
                   L_HIP, L_KNEE, L_ANKLE, R_ANKLE];
   if (!visibilityOk(lm, needed, t)) return FAIL;
 
+  const torso = torsoLength(lm);
   const c = new Criteria();
   for (const [part, sh, el, wr] of ARMS) {
-    const armAngle = angleFromVerticalUp(lm[sh], lm[wr]);
-    c.add(part, trapezoid(armAngle, -1.0, t.aArmAngleIdealLo, t.aArmAngleIdealHi, t.aArmAngleZero));
-    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
-    c.add(part, atLeast(elbow, t.aElbowStraightZero, t.aElbowStraightMin));
+    const fist = dist(lm[wr], lm[NOSE]) / torso;
+    c.add(part, atMost(fist, t.aFistToFaceMax, t.aFistToFaceZero));
+    // Elbow angle is useless here - a fist at the chin folds the arm back on
+    // itself, so the 2D angle collapses. Height and tuck describe the guard.
+    const drop = (lm[el].y - lm[wr].y) / torso; // + = elbow under the fist
+    c.add(part, atLeast(drop, t.aElbowBelowWristZero, t.aElbowBelowWristMin));
+    const tuck = Math.abs(lm[el].x - lm[sh].x) / torso;
+    c.add(part, atMost(tuck, t.aElbowTuckTol, t.aElbowTuckZero));
   }
 
-  const torso = torsoLength(lm);
   const legRaise = (lm[R_ANKLE].y - lm[L_ANKLE].y) / torso; // + = left ankle higher
   c.add(L_LEG, atLeast(legRaise, t.aLegRaiseZero, t.aLegRaiseMin));
 
@@ -190,57 +190,73 @@ function scorePoseC(lm, t) {
 }
 
 function scorePoseD(lm, t) {
-  const needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+  const needed = [L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST,
                   L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
   if (!visibilityOk(lm, needed, t)) return FAIL;
 
   const torso = torsoLength(lm);
   const c = new Criteria();
 
-  for (const [part, sh, el, wr] of ARMS) {
-    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
-    c.add(part, trapezoid(elbow, t.dElbowBendZeroLo, t.dElbowBendLo,
-                          t.dElbowBendHi, t.dElbowBendZeroHi));
-    const wristUp = (lm[el].y - lm[wr].y) / torso;
-    c.add(part, atLeast(wristUp, 0.0, t.dWristAboveElbowMin));
-    const elbowHeight = Math.abs(lm[el].y - lm[sh].y) / torso;
-    c.add(part, trapezoid(elbowHeight, -1.0, 0.0, t.dElbowHeightTol, t.dElbowHeightZero));
-  }
-
-  const shoulderW = Math.max(1e-6, Math.abs(lm[L_SHOULDER].x - lm[R_SHOULDER].x));
-  const stance = Math.abs(lm[L_ANKLE].x - lm[R_ANKLE].x) / shoulderW;
-  const stanceScore = trapezoid(stance, t.dStanceWidthZero, t.dStanceWidthMin,
-                                t.dStanceWidthIdeal * 3, t.dStanceWidthIdeal * 4);
-
   for (const [part, hip, knee, ankle] of LEGS) {
-    c.add(part, stanceScore);
     const kneeAngle = angleDeg(lm[hip], lm[knee], lm[ankle]);
     c.add(part, trapezoid(kneeAngle, -1.0, 0.0, t.dKneeBendIdealHi, t.dKneeBendZero));
   }
+
+  const hipY = (lm[L_HIP].y + lm[R_HIP].y) / 2;
+  const kneeY = (lm[L_KNEE].y + lm[R_KNEE].y) / 2;
+  c.add(TORSO, trapezoid((kneeY - hipY) / torso, -1.0, -0.5, t.dHipDropIdealHi, t.dHipDropZero));
+
+  for (const [part, wr, knee] of [[L_ARM, L_WRIST, L_KNEE], [R_ARM, R_WRIST, R_KNEE]]) {
+    const reach = (lm[wr].y - lm[knee].y) / torso; // + = hand below the knee
+    c.add(part, atLeast(reach, t.dHandsBelowKneeZero, t.dHandsBelowKneeMin));
+  }
+
+  const kneeW = Math.abs(lm[L_KNEE].x - lm[R_KNEE].x);
+  const ankleW = Math.abs(lm[L_ANKLE].x - lm[R_ANKLE].x);
+  const kneesOut = atLeast((kneeW - ankleW) / torso, t.dKneesOutZero, t.dKneesOutMin);
+  c.add(L_LEG, kneesOut);
+  c.add(R_LEG, kneesOut);
 
   return c.result();
 }
 
 function scorePoseE(lm, t) {
-  const needed = [L_SHOULDER, R_SHOULDER, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
+  const needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
+                  L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE];
   if (!visibilityOk(lm, needed, t)) return FAIL;
 
   const torso = torsoLength(lm);
 
+  const feet = Math.abs(lm[L_ANKLE].x - lm[R_ANKLE].x) / torso;
+  const feetScore = atMost(feet, t.eFeetTogetherMax, t.eFeetTogetherZero);
+
   const options = [];
-  for (const [[part, hip, knee, ankle], standing] of [[LEGS[0], R_ANKLE], [LEGS[1], L_ANKLE]]) {
+  for (const [up, down] of [[ARMS[0], ARMS[1]], [ARMS[1], ARMS[0]]]) {
+    const [uPart, uSh, , uWr] = up;
+    const [dPart, dSh, , dWr] = down;
     const c = new Criteria();
 
-    const hipMid = midpoint(lm[L_HIP], lm[R_HIP]);
-    const shMid = midpoint(lm[L_SHOULDER], lm[R_SHOULDER]);
-    const tilt = angleFromVerticalUp(hipMid, shMid);
-    c.add(TORSO, trapezoid(tilt, t.eTorsoTiltZeroLo, t.eTorsoTiltIdealLo,
-                           t.eTorsoTiltIdealHi, t.eTorsoTiltZeroHi));
+    const upAngle = angleFromVerticalUp(lm[uSh], lm[uWr]);
+    c.add(uPart, atMost(upAngle, t.eUpArmAngleMax, t.eUpArmAngleZero));
+    const overhead = (lm[NOSE].y - lm[uWr].y) / torso; // + = wrist above the head
+    c.add(uPart, atLeast(overhead, t.eUpWristAboveHeadZero, t.eUpWristAboveHeadMin));
 
-    const raiseAmt = (lm[standing].y - lm[ankle].y) / torso;
-    c.add(part, atLeast(raiseAmt, t.eLegRaiseZero, t.eLegRaiseMin));
-    const kneeAngle = angleDeg(lm[hip], lm[knee], lm[ankle]);
-    c.add(part, atLeast(kneeAngle, t.eKneeStraightZero, t.eKneeStraightMin));
+    const downAngle = angleFromVerticalUp(lm[dSh], lm[dWr]);
+    c.add(dPart, atLeast(downAngle, t.eDownArmAngleZero, t.eDownArmAngleMin));
+    const dHip = dPart === L_ARM ? lm[L_HIP] : lm[R_HIP];
+    const pinned = Math.abs(lm[dWr].x - dHip.x) / torso;
+    c.add(dPart, atMost(pinned, t.eDownWristTuckTol, t.eDownWristTuckZero));
+
+    for (const [part, sh, el, wr] of [up, down]) {
+      const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
+      c.add(part, atLeast(elbow, t.eElbowStraightZero, t.eElbowStraightMin));
+    }
+
+    for (const [part, hip, knee, ankle] of LEGS) {
+      c.add(part, feetScore);
+      const kneeAngle = angleDeg(lm[hip], lm[knee], lm[ankle]);
+      c.add(part, atLeast(kneeAngle, t.eLegStraightZero, t.eLegStraightMin));
+    }
 
     options.push(c);
   }
@@ -276,6 +292,8 @@ function scorePoseF(lm, t) {
   return c.result();
 }
 
+// Archer: the bow arm points up on a diagonal rather than out to the side,
+// which keeps the pose narrow. Either arm may draw.
 function scorePoseG(lm, t) {
   const needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
                   L_ANKLE, R_ANKLE];
@@ -293,10 +311,13 @@ function scorePoseG(lm, t) {
     const c = new Criteria();
 
     const armAngle = angleFromVerticalUp(lm[sSh], lm[sWr]);
-    c.add(sPart, trapezoid(armAngle, t.gStraightArmZeroLo, t.gStraightArmIdealLo,
-                           t.gStraightArmIdealHi, t.gStraightArmZeroHi));
+    c.add(sPart, trapezoid(armAngle, t.gBowArmZeroLo, t.gBowArmIdealLo,
+                           t.gBowArmIdealHi, t.gBowArmZeroHi));
     const elbow = angleDeg(lm[sSh], lm[sEl], lm[sWr]);
     c.add(sPart, atLeast(elbow, t.gStraightElbowZero, t.gStraightElbowMin));
+    // The bow hand reaches away - it is not a second fist at the chin.
+    const reach = dist(lm[sWr], lm[NOSE]) / torso;
+    c.add(sPart, atLeast(reach, t.gBowWristFromFaceZero, t.gBowWristFromFaceMin));
 
     const bentAngle = angleDeg(lm[bSh], lm[bEl], lm[bWr]);
     c.add(bPart, trapezoid(bentAngle, t.gBentElbowZeroLo, t.gBentElbowLo,

@@ -42,22 +42,27 @@ Built on [MediaPipe Pose Landmarker](https://ai.google.dev/edge/mediapipe/soluti
 
 ## The poses
 
+Every pose is deliberately compact. The camera has to fit up to five kids
+side by side, so no pose asks for a limb held out sideways: arms go up or stay
+tucked, and stances stay near shoulder width. Each pose fits in roughly 1.3
+torso-lengths of floor width, where a kid standing still already takes 0.75.
+
 Round 1:
 
 | Letter | Pose |
 | --- | --- |
-| A | Crane stance: arms raised high in a Y, left knee raised and bent |
-| B | Tilted X: left arm raised diagonally, right arm straight up, right leg slightly raised |
+| A | Crane guard: both fists up by the chin with the elbows folded in, left knee raised and bent |
+| B | Tilted X: left arm on a diagonal, right arm straight up, right leg slightly raised |
 | C | Squat down with both arms reaching forward |
-| D | Frog: arms folded pointing to the sky (goalpost arms), legs wide and bent |
+| D | Frog: crouch all the way down, knees pushed out past the feet, both hands to the floor |
 
 Round 2 (harder - balance and coordination):
 
 | Letter | Pose |
 | --- | --- |
-| E | Airplane: balance on one leg, torso tilted forward, other leg stretched back, arms along the body (figure-skater style, arms are not scored) |
+| E | Rocket: one arm shot straight up past the head, the other pressed down against the side, feet together |
 | F | Tree: one foot against the other knee, arms overhead with hands together |
-| G | Archer: one arm straight out, other elbow bent pulling the wrist to the chin, wide stance |
+| G | Archer: bow arm aimed up at the sky, other elbow bent pulling the wrist to the chin |
 | H | Knee hug: pull one knee to the chest with both hands while standing tall |
 
 ## Setup
@@ -115,7 +120,9 @@ All numeric parameters live in `pose_trial/config.py`:
   settings, and mirror display.
 - `PoseTuning` — geometry tolerances for each pose scorer (angle bands,
   distance margins). Tighten these for an older group, loosen further for
-  very young kids.
+  very young kids. These bands also control how much floor space a pose
+  needs: widening an arm-angle band lets kids sprawl, which means fewer of
+  them fit in frame.
 
 Only `n` is dynamic; everything else is fixed per build via `config.py`.
 

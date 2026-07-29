@@ -159,21 +159,24 @@ POSE_FIGURES = {
         "head": (0.5, 0.12),
         "lines": [
             ((0.5, 0.20), (0.5, 0.55)),    # torso
-            ((0.5, 0.25), (0.28, 0.05)),   # arms in a Y
-            ((0.5, 0.25), (0.72, 0.05)),
+            ((0.58, 0.26), (0.61, 0.44)),  # elbow folded down and in...
+            ((0.61, 0.44), (0.56, 0.23)),  # ...fist up beside the chin
+            ((0.42, 0.26), (0.39, 0.44)),
+            ((0.39, 0.44), (0.44, 0.23)),
             ((0.5, 0.55), (0.48, 0.92)),   # standing leg
-            ((0.5, 0.55), (0.68, 0.60)),   # raised bent knee
-            ((0.68, 0.60), (0.60, 0.76)),
+            ((0.5, 0.55), (0.64, 0.62)),   # raised bent knee
+            ((0.64, 0.62), (0.58, 0.78)),
         ],
     },
     "B": {
         "head": (0.5, 0.12),
         "lines": [
             ((0.5, 0.20), (0.5, 0.55)),    # torso
-            ((0.44, 0.25), (0.20, 0.06)),  # diagonal arm
-            ((0.58, 0.25), (0.64, 0.00)),  # straight-up arm
+            ((0.44, 0.25), (0.30, 0.04)),  # diagonal arm
+            ((0.58, 0.25), (0.60, 0.00)),  # straight-up arm
             ((0.5, 0.55), (0.44, 0.92)),   # standing leg
-            ((0.5, 0.55), (0.68, 0.78)),   # raised leg
+            ((0.5, 0.55), (0.60, 0.72)),   # raised leg, tucked in close
+            ((0.60, 0.72), (0.58, 0.86)),
         ],
     },
     "C": {
@@ -189,29 +192,29 @@ POSE_FIGURES = {
         ],
     },
     "D": {
-        "head": (0.5, 0.14),
+        "head": (0.5, 0.30),
         "lines": [
-            ((0.5, 0.22), (0.5, 0.55)),    # torso
-            ((0.36, 0.28), (0.22, 0.28)),  # goalpost arms
-            ((0.22, 0.28), (0.22, 0.08)),
-            ((0.64, 0.28), (0.78, 0.28)),
-            ((0.78, 0.28), (0.78, 0.08)),
-            ((0.5, 0.55), (0.28, 0.68)),   # wide bent legs
-            ((0.28, 0.68), (0.31, 0.92)),
-            ((0.5, 0.55), (0.72, 0.68)),
-            ((0.72, 0.68), (0.69, 0.92)),
+            ((0.5, 0.38), (0.5, 0.62)),    # torso, dropped low
+            ((0.44, 0.42), (0.40, 0.62)),  # arms hanging...
+            ((0.40, 0.62), (0.46, 0.88)),  # ...hands down to the floor
+            ((0.56, 0.42), (0.60, 0.62)),
+            ((0.60, 0.62), (0.54, 0.88)),
+            ((0.5, 0.62), (0.28, 0.70)),   # knees pushed out past the feet
+            ((0.28, 0.70), (0.38, 0.92)),
+            ((0.5, 0.62), (0.72, 0.70)),
+            ((0.72, 0.70), (0.62, 0.92)),
         ],
     },
 }
 
 POSE_FIGURES["E"] = {
-    "head": (0.14, 0.30),
+    "head": (0.5, 0.12),
     "lines": [
-        ((0.22, 0.34), (0.50, 0.42)),   # torso tilted forward
-        ((0.28, 0.37), (0.48, 0.50)),   # arms tucked along the body
-        ((0.27, 0.40), (0.45, 0.53)),
-        ((0.50, 0.42), (0.48, 0.92)),   # standing leg
-        ((0.50, 0.42), (0.88, 0.36)),   # leg extended back
+        ((0.5, 0.20), (0.5, 0.55)),     # torso
+        ((0.58, 0.25), (0.62, 0.00)),   # one arm shot straight up
+        ((0.42, 0.25), (0.38, 0.58)),   # the other pressed down at the side
+        ((0.5, 0.55), (0.47, 0.92)),    # feet together
+        ((0.5, 0.55), (0.53, 0.92)),
     ],
 }
 POSE_FIGURES["F"] = {
@@ -226,14 +229,14 @@ POSE_FIGURES["F"] = {
     ],
 }
 POSE_FIGURES["G"] = {
-    "head": (0.5, 0.14),
+    "head": (0.5, 0.16),
     "lines": [
-        ((0.5, 0.22), (0.5, 0.55)),     # torso
-        ((0.44, 0.27), (0.14, 0.27)),   # straight bow arm
-        ((0.56, 0.27), (0.72, 0.31)),   # drawing arm: to elbow...
-        ((0.72, 0.31), (0.57, 0.19)),   # ...then wrist to chin
-        ((0.5, 0.55), (0.44, 0.92)),    # standing leg
-        ((0.5, 0.55), (0.68, 0.78)),    # other leg out to the side
+        ((0.5, 0.24), (0.5, 0.56)),     # torso
+        ((0.56, 0.28), (0.72, 0.02)),   # bow arm aimed at the sky
+        ((0.44, 0.28), (0.34, 0.20)),   # drawing arm: elbow up beside the head...
+        ((0.34, 0.20), (0.46, 0.24)),   # ...then wrist back to the chin
+        ((0.5, 0.56), (0.44, 0.92)),    # feet a little apart
+        ((0.5, 0.56), (0.58, 0.92)),
     ],
 }
 POSE_FIGURES["H"] = {
@@ -249,13 +252,13 @@ POSE_FIGURES["H"] = {
 }
 
 POSE_CAPTIONS = {
-    "A": "Crane: arms in Y, left knee up",
+    "A": "Crane guard: fists up, left knee up",
     "B": "Tilted X, right leg up",
     "C": "Squat, arms forward",
-    "D": "Frog: folded arms, wide legs",
-    "E": "Airplane: tip forward, leg back, arms in",
+    "D": "Frog: crouch low, hands down",
+    "E": "Rocket: one arm up, one arm down",
     "F": "Tree: foot on knee, hands up",
-    "G": "Archer: draw the bow",
+    "G": "Archer: aim at the sky",
     "H": "Knee hug: knee to chest",
 }
 
