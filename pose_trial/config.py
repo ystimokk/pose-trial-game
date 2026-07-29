@@ -27,13 +27,18 @@ class PoseTuning:
     # Minimum average landmark visibility required before a pose can score at all.
     min_visibility: float = 0.4
 
-    # --- Pose A: crane guard (fists up by the chin, elbows in, left knee raised) ---
-    a_fist_to_face_max: float = 0.70     # wrist near the chin (fraction of torso)
-    a_fist_to_face_zero: float = 1.15
-    a_elbow_below_wrist_min: float = 0.30  # elbow carried under the fist (fraction of torso)
-    a_elbow_below_wrist_zero: float = -0.05
-    a_elbow_tuck_tol: float = 0.32       # |elbow.x - shoulder.x| / torso; elbows stay in
-    a_elbow_tuck_zero: float = 0.80
+    # --- Pose A: crane (both arms reaching straight up, left knee raised) ---
+    # Straight up rather than out in a Y: same "hands to the sky" shape, but it
+    # costs no extra floor width.
+    a_arm_angle_max: float = 28.0        # each arm within this angle of vertical
+    a_arm_angle_zero: float = 62.0
+    a_wrist_above_head_min: float = 0.30   # wrist above the nose (fraction of torso)
+    a_wrist_above_head_zero: float = -0.05
+    a_elbow_straight_min: float = 140.0
+    a_elbow_straight_zero: float = 95.0
+    # Hands stay apart: arms up with the hands TOGETHER is the tree (F).
+    a_hands_apart_min: float = 0.45      # wrist-to-wrist distance (fraction of torso)
+    a_hands_apart_zero: float = 0.12
     # Saturates at a modest lift with a wide ramp below it, so a raised foot
     # that sinks a little stays green instead of flickering.
     a_leg_raise_min: float = 0.10        # left ankle above right ankle (fraction of torso)

@@ -57,13 +57,18 @@ export const CONFIG = {
   tuning: {
     minVisibility: 0.4,
 
-    // Pose A: crane guard (fists up by the chin, elbows in, left knee raised)
-    aFistToFaceMax: 0.70,
-    aFistToFaceZero: 1.15,
-    aElbowBelowWristMin: 0.30,
-    aElbowBelowWristZero: -0.05,
-    aElbowTuckTol: 0.32,
-    aElbowTuckZero: 0.80,
+    // Pose A: crane (both arms reaching straight up, left knee raised).
+    // Straight up rather than out in a Y: same "hands to the sky" shape, but it
+    // costs no extra floor width.
+    aArmAngleMax: 28.0,
+    aArmAngleZero: 62.0,
+    aWristAboveHeadMin: 0.30,
+    aWristAboveHeadZero: -0.05,
+    aElbowStraightMin: 140.0,
+    aElbowStraightZero: 95.0,
+    // Hands stay apart: arms up with the hands TOGETHER is the tree (F).
+    aHandsApartMin: 0.45,
+    aHandsApartZero: 0.12,
     // Saturates at a modest lift with a wide ramp below it, so a raised foot
     // that sinks a little stays green instead of flickering.
     aLegRaiseMin: 0.10,

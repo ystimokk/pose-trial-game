@@ -171,16 +171,14 @@ def draw_countdown(frame, remaining: float, total: float):
 # plus line segments in a unit box (x right, y down).
 POSE_FIGURES = {
     "A": {
-        "head": (0.5, 0.12),
+        "head": (0.5, 0.20),
         "lines": [
-            ((0.5, 0.20), (0.5, 0.55)),    # torso
-            ((0.58, 0.26), (0.68, 0.46)),  # elbow low at the side...
-            ((0.68, 0.46), (0.64, 0.14)),  # ...forearm straight up, fist beside the head
-            ((0.42, 0.26), (0.32, 0.46)),
-            ((0.32, 0.46), (0.36, 0.14)),
-            ((0.5, 0.55), (0.48, 0.92)),   # standing leg
-            ((0.5, 0.55), (0.64, 0.62)),   # raised bent knee
-            ((0.64, 0.62), (0.58, 0.78)),
+            ((0.5, 0.28), (0.5, 0.60)),    # torso
+            ((0.58, 0.33), (0.62, 0.02)),  # both arms reaching straight up
+            ((0.42, 0.33), (0.38, 0.02)),
+            ((0.5, 0.60), (0.48, 0.94)),   # standing leg
+            ((0.5, 0.60), (0.64, 0.66)),   # raised bent knee
+            ((0.64, 0.66), (0.58, 0.80)),
         ],
     },
     "B": {
@@ -268,7 +266,7 @@ POSE_FIGURES["H"] = {
 }
 
 POSE_CAPTIONS = {
-    "A": "Crane guard: forearms up, left knee up",
+    "A": "Crane: both arms to the sky, left knee up",
     "B": "Tilted X, right leg up",
     "C": "Squat, arms forward",
     "D": "Frog: crouch low, hands down",

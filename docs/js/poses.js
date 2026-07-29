@@ -17,8 +17,7 @@ export const L_LEG = "left_leg", R_LEG = "right_leg";
 export const TORSO = "torso";
 
 export const POSE_DESCRIPTIONS = {
-  A: "Crane guard: forearms straight up with your fists beside your face, " +
-     "elbows tucked in, left knee raised and bent",
+  A: "Crane: both arms reaching straight up to the sky, left knee raised and bent",
   B: "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
   C: "Squat down with both arms reaching forward",
   D: "Frog: crouch all the way down, knees pushed out, hands to the floor",
@@ -119,15 +118,18 @@ function scorePoseA(lm, t) {
   const torso = torsoLength(lm);
   const c = new Criteria();
   for (const [part, sh, el, wr] of ARMS) {
-    const fist = dist(lm[wr], lm[NOSE]) / torso;
-    c.add(part, atMost(fist, t.aFistToFaceMax, t.aFistToFaceZero));
-    // Elbow angle is useless here - a fist at the chin folds the arm back on
-    // itself, so the 2D angle collapses. Height and tuck describe the guard.
-    const drop = (lm[el].y - lm[wr].y) / torso; // + = elbow under the fist
-    c.add(part, atLeast(drop, t.aElbowBelowWristZero, t.aElbowBelowWristMin));
-    const tuck = Math.abs(lm[el].x - lm[sh].x) / torso;
-    c.add(part, atMost(tuck, t.aElbowTuckTol, t.aElbowTuckZero));
+    const angle = angleFromVerticalUp(lm[sh], lm[wr]);
+    c.add(part, atMost(angle, t.aArmAngleMax, t.aArmAngleZero));
+    const above = (lm[NOSE].y - lm[wr].y) / torso;
+    c.add(part, atLeast(above, t.aWristAboveHeadZero, t.aWristAboveHeadMin));
+    const elbow = angleDeg(lm[sh], lm[el], lm[wr]);
+    c.add(part, atLeast(elbow, t.aElbowStraightZero, t.aElbowStraightMin));
   }
+
+  const apart = atLeast(dist(lm[L_WRIST], lm[R_WRIST]) / torso,
+                        t.aHandsApartZero, t.aHandsApartMin);
+  c.add(L_ARM, apart);
+  c.add(R_ARM, apart);
 
   const legRaise = (lm[R_ANKLE].y - lm[L_ANKLE].y) / torso; // + = left ankle higher
   c.add(L_LEG, atLeast(legRaise, t.aLegRaiseZero, t.aLegRaiseMin));

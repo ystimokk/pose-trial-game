@@ -29,8 +29,7 @@ L_ANKLE, R_ANKLE = 27, 28
 L_ARM, R_ARM, L_LEG, R_LEG, TORSO = "left_arm", "right_arm", "left_leg", "right_leg", "torso"
 
 POSE_DESCRIPTIONS = {
-    "A": "Crane guard: forearms straight up with your fists beside your face, "
-         "elbows tucked in, left knee raised and bent",
+    "A": "Crane: both arms reaching straight up to the sky, left knee raised and bent",
     "B": "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
     "C": "Squat down with both arms reaching forward",
     "D": "Frog: crouch all the way down, knees pushed out, hands to the floor",
@@ -137,8 +136,8 @@ LEGS = ((L_LEG, L_HIP, L_KNEE, L_ANKLE), (R_LEG, R_HIP, R_KNEE, R_ANKLE))
 
 
 def score_pose_a(lm, t: PoseTuning) -> PoseResult:
-    """Crane guard: both fists up by the chin with the elbows folded in close
-    to the body, left knee raised and bent."""
+    """Crane: both arms reaching straight up to the sky, left knee raised and
+    bent."""
     needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
               L_HIP, L_KNEE, L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
@@ -147,14 +146,17 @@ def score_pose_a(lm, t: PoseTuning) -> PoseResult:
     torso = _torso_length(lm)
     c = _Criteria()
     for part, sh, el, wr in ARMS:
-        fist = _dist(lm[wr], lm[NOSE]) / torso
-        c.add(part, _at_most(fist, t.a_fist_to_face_max, t.a_fist_to_face_zero))
-        # Elbow angle is useless here - a fist at the chin folds the arm back on
-        # itself, so the 2D angle collapses. Height and tuck describe the guard.
-        drop = (lm[el].y - lm[wr].y) / torso  # positive = elbow under the fist
-        c.add(part, _at_least(drop, t.a_elbow_below_wrist_zero, t.a_elbow_below_wrist_min))
-        tuck = abs(lm[el].x - lm[sh].x) / torso
-        c.add(part, _at_most(tuck, t.a_elbow_tuck_tol, t.a_elbow_tuck_zero))
+        angle = _angle_from_vertical_up(lm[sh], lm[wr])
+        c.add(part, _at_most(angle, t.a_arm_angle_max, t.a_arm_angle_zero))
+        above = (lm[NOSE].y - lm[wr].y) / torso
+        c.add(part, _at_least(above, t.a_wrist_above_head_zero, t.a_wrist_above_head_min))
+        elbow = _angle_deg(lm[sh], lm[el], lm[wr])
+        c.add(part, _at_least(elbow, t.a_elbow_straight_zero, t.a_elbow_straight_min))
+
+    apart = _at_least(_dist(lm[L_WRIST], lm[R_WRIST]) / torso,
+                      t.a_hands_apart_zero, t.a_hands_apart_min)
+    c.add(L_ARM, apart)
+    c.add(R_ARM, apart)
 
     leg_raise = (lm[R_ANKLE].y - lm[L_ANKLE].y) / torso  # positive = left ankle higher
     c.add(L_LEG, _at_least(leg_raise, t.a_leg_raise_zero, t.a_leg_raise_min))

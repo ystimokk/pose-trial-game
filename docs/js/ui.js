@@ -205,16 +205,14 @@ export function drawInfoHint(ctx, w, h) {
 
 const POSE_FIGURES = {
   A: {
-    head: [0.5, 0.12],
+    head: [0.5, 0.20],
     lines: [
-      [[0.5, 0.20], [0.5, 0.55]],
-      [[0.58, 0.26], [0.68, 0.46]],
-      [[0.68, 0.46], [0.64, 0.14]],
-      [[0.42, 0.26], [0.32, 0.46]],
-      [[0.32, 0.46], [0.36, 0.14]],
-      [[0.5, 0.55], [0.48, 0.92]],
-      [[0.5, 0.55], [0.64, 0.62]],
-      [[0.64, 0.62], [0.58, 0.78]],
+      [[0.5, 0.28], [0.5, 0.60]],
+      [[0.58, 0.33], [0.62, 0.02]],
+      [[0.42, 0.33], [0.38, 0.02]],
+      [[0.5, 0.60], [0.48, 0.94]],
+      [[0.5, 0.60], [0.64, 0.66]],
+      [[0.64, 0.66], [0.58, 0.80]],
     ],
   },
   B: {
@@ -301,7 +299,7 @@ const POSE_FIGURES = {
 };
 
 const POSE_CAPTIONS = {
-  A: "Crane guard: forearms up, left knee up",
+  A: "Crane: both arms to the sky, left knee up",
   B: "Tilted X, right leg up",
   C: "Squat, arms forward",
   D: "Frog: crouch low, hands down",

@@ -51,7 +51,7 @@ Round 1:
 
 | Letter | Pose |
 | --- | --- |
-| A | Crane guard: forearms straight up with both fists beside the face, elbows tucked in, left knee raised and bent |
+| A | Crane: both arms reaching straight up to the sky, left knee raised and bent |
 | B | Tilted X: left arm on a diagonal, right arm straight up, right leg slightly raised |
 | C | Squat down with both arms reaching forward |
 | D | Frog: crouch all the way down, knees pushed out past the feet, both hands to the floor |
