@@ -32,7 +32,8 @@ let n = 2;
 let dev = false;
 let initialRoundIdx = 0;
 
-let state, code, roundIdx, devIndex;
+let state, code, roundIdx;
+let devIndex = 0; // dev mode walks the alphabet from A; reset at the start of a run
 let lineupFullSince, detectedAt, completedAt, roundCompleteAt;
 let solved, hold, personClocks;
 let showInfo = false;
@@ -218,11 +219,16 @@ startBtn.addEventListener("click", async () => {
     darkSince = null;
     camWarning.classList.add("hidden");
 
+    // Build the game state before revealing the stage, so a failure here leaves
+    // the admin on the setup screen with a readable message rather than a black
+    // canvas hiding it.
+    devIndex = 0;
+    restart();
+
     setupEl.classList.add("hidden");
     stageEl.classList.remove("hidden");
     statusEl.textContent = "";
 
-    restart();
     running = true;
     requestAnimationFrame(loop);
   } catch (err) {
@@ -236,13 +242,16 @@ startBtn.addEventListener("click", async () => {
       NotFoundError: "No camera found on this device.",
     };
     statusEl.textContent = reasons[err.name] || `Could not start: ${err.message || err}`;
+    releaseCamera();
+    stageEl.classList.add("hidden");
+    setupEl.classList.remove("hidden");
     populateCameras();
   } finally {
     startBtn.disabled = false;
   }
 });
 
-function exitToSetup() {
+function releaseCamera() {
   running = false;
   camWarning.classList.add("hidden");
   darkSince = null;
@@ -254,6 +263,10 @@ function exitToSetup() {
     landmarker.close();
     landmarker = null;
   }
+}
+
+function exitToSetup() {
+  releaseCamera();
   stageEl.classList.add("hidden");
   setupEl.classList.remove("hidden");
 }
@@ -288,8 +301,25 @@ function sortedLeftToRight(people, mirror) {
   return [...people].sort((a, b) => displayX(a) - displayX(b));
 }
 
+// An exception here would stop the animation callbacks and leave the last
+// frame frozen on screen with no explanation, so report it and bail out.
 function loop(nowMs) {
   if (!running) return;
+  try {
+    renderFrame(nowMs);
+  } catch (err) {
+    console.error(err);
+    running = false;
+    camWarning.innerHTML =
+      `<strong>The trial hit an error and stopped.</strong><br/>` +
+      `${err.message || err}<br/>Press Exit and start again.`;
+    camWarning.classList.remove("hidden");
+    return;
+  }
+  requestAnimationFrame(loop);
+}
+
+function renderFrame(nowMs) {
   const now = nowMs / 1000;
   const w = canvas.width;
   const h = canvas.height;
@@ -422,6 +452,4 @@ function loop(nowMs) {
   } else {
     ui.drawInfoHint(ctx, w, h);
   }
-
-  requestAnimationFrame(loop);
 }
