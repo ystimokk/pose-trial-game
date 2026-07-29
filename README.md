@@ -1,4 +1,4 @@
-# Pose Trial
+# Master your skills
 
 A kids' curriculum station that teaches how AI "sees" people. A group of
 adventurers lines up in front of a camera, a random pose code is generated,
@@ -108,11 +108,25 @@ mirroring the Python config.
 
 All numeric parameters live in `pose_trial/config.py`:
 
-- `AppConfig` — gameplay values: confidence threshold (default **0.99**, with
-  per-pose overrides in `confidence_overrides`, e.g. D at 0.95),
-  hold duration (default **5 s**), max participants (default **5**), the pose
-  alphabet, flow timings, camera settings, and mirror display.
+- `AppConfig` — gameplay values: confidence threshold (default **0.85**, with
+  per-pose overrides in `confidence_overrides`, e.g. D at 0.80),
+  hold duration (default **5 s**), the wobble grace period (default **0.4 s**),
+  max participants (default **5**), the round alphabets, flow timings, camera
+  settings, and mirror display.
 - `PoseTuning` — geometry tolerances for each pose scorer (angle bands,
-  distance margins). Loosen these for younger kids, tighten for a challenge.
+  distance margins). Tighten these for an older group, loosen further for
+  very young kids.
 
 Only `n` is dynamic; everything else is fixed per build via `config.py`.
+
+### Difficulty
+
+The defaults are deliberately forgiving so kids succeed rather than fight the
+detector: each pose has wide "ideal" bands that score a full 1.0, the bar to
+turn green is 85%, and a brief wobble won't reset the hold countdown. The
+bands are still narrow enough that each pose only matches itself — the closest
+any wrong pose comes to passing is 0.81 against an 0.85 bar.
+
+To make it harder, raise `confidence_threshold` (0.95+ feels strict) and/or
+narrow the ideal bands in `PoseTuning`. To make it easier still, lower the
+threshold toward 0.75 and raise `break_grace_seconds`.

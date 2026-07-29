@@ -1,4 +1,4 @@
-"""Admin entry point for the Pose Trial station.
+"""Admin entry point for the Master your skills station.
 
 Usage:
     python main.py --participants 3
@@ -12,7 +12,7 @@ from pose_trial.config import AppConfig
 
 def main():
     cfg = AppConfig()
-    parser = argparse.ArgumentParser(description="Pose Trial station")
+    parser = argparse.ArgumentParser(description="Master your skills station")
     parser.add_argument(
         "-n", "--participants", type=int, default=None,
         help=f"Number of participants (1-{cfg.max_participants})",
