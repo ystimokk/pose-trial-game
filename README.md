@@ -81,7 +81,9 @@ The pose model (~9 MB) is downloaded automatically to `models/` on first run.
 python main.py --participants 3
 ```
 
-If `--participants` is omitted, the admin is prompted for it.
+If `--participants` is omitted, the admin is prompted for it. `--camera N`
+selects a different camera when the default one is not the one pointing at the
+station (see [Camera troubleshooting](#camera-troubleshooting)).
 
 For testing poses, dev mode cycles the code through A-H in order and
 auto-advances a few seconds after each completion (no lineup or rounds
@@ -108,6 +110,33 @@ section offers dev mode and a starting round. On-screen buttons or the same
 The web app needs HTTPS (or localhost) for camera access - GitHub Pages
 provides this automatically. Parameters live in `docs/js/config.js`,
 mirroring the Python config.
+
+## Camera troubleshooting
+
+A camera that is covered, already in use, or blocked by the OS does not throw
+an error - it quietly hands back frames that are entirely black, so the app
+looks like it started fine but shows nothing. Both versions now detect this
+and put a warning on screen after a couple of seconds instead of leaving you
+guessing.
+
+If the picture is black:
+
+- **Another app or tab has the camera.** Zoom, Photo Booth, Teams, or a second
+  tab of this game will do it. Quit them, then start the trial again.
+- **The wrong camera got picked.** On a Mac an iPhone can register itself as a
+  Continuity Camera and be chosen by default; if it is face-down or locked the
+  feed is black. In the web version choose the right one from the **Camera**
+  dropdown on the start screen. For the Python version:
+
+```bash
+python main.py --list-cameras     # shows which indices give a real picture
+python main.py --camera 1         # then use the one that works
+```
+
+- **The OS is blocking it.** On macOS the terminal app you launch from needs
+  its own camera permission (System Settings > Privacy & Security > Camera);
+  without it AVFoundation returns black frames rather than failing. Browsers
+  need the site allowed under the padlock icon in the address bar.
 
 ## Tuning per build
 

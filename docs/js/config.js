@@ -35,6 +35,10 @@ export const CONFIG = {
   minPoseDetectionConfidence: 0.5,
   minPosePresenceConfidence: 0.5,
   minTrackingConfidence: 0.5,
+  // A camera that is blocked, in use elsewhere, or asleep hands back frames that
+  // are pure black instead of failing, so watch brightness and say so out loud.
+  blackFrameThreshold: 6.0,       // mean 0-255 brightness counted as "no image"
+  blackFrameSeconds: 2.5,         // how long it must stay dark before we warn
   wasmBaseUrl: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm",
   modelUrl: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task",
 

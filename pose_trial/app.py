@@ -76,6 +76,34 @@ def _sorted_left_to_right(people, mirror: bool):
     return sorted(people, key=display_x)
 
 
+def list_cameras(cfg: AppConfig, max_index: int = 4) -> None:
+    """Report which camera indices open and which actually produce a picture.
+
+    Cameras ramp their exposure over the first frames, so sample a short run
+    rather than judging the very first (usually dark) one.
+    """
+    print("Probing cameras...\n")
+    for idx in range(max_index):
+        cap = cv2.VideoCapture(idx)
+        if not cap.isOpened():
+            cap.release()
+            continue
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.frame_width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.frame_height)
+        means = [f.mean() for _ in range(30) for ok, f in [cap.read()] if ok and f is not None]
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        cap.release()
+        if not means:
+            print(f"  index {idx}: opens but returns no frames")
+        elif max(means) < cfg.black_frame_threshold:
+            print(f"  index {idx}: {w}x{h} - ALL BLACK (lens covered, camera busy, "
+                  f"or this terminal lacks camera permission)")
+        else:
+            print(f"  index {idx}: {w}x{h} - working picture (brightness {max(means):.0f})")
+    print(f"\nRun with --camera N to use a specific one (currently {cfg.camera_index}).")
+
+
 def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: int = 1):
     """Run the station. In dev mode the code isn't random: trials walk through
     the alphabet in order (A, B, C, D, ...) and auto-advance after each
@@ -118,6 +146,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
     round_complete_at = None      # when the ROUND_COMPLETE screen appeared
     show_info = False             # info overlay toggled with the I key
     show_hint = False             # skeleton trace toggled with the H key
+    dark_since = None             # start of an unbroken run of black frames
 
     try:
         while True:
@@ -125,6 +154,15 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
             if not ok:
                 continue
             now = time.monotonic()
+
+            # Subsampled so this costs nothing; a covered or busy camera still
+            # returns "valid" frames, they are just entirely black.
+            if frame[::16, ::16].mean() < cfg.black_frame_threshold:
+                if dark_since is None:
+                    dark_since = now
+            else:
+                dark_since = None
+
             people = detector.detect(frame, int(now * 1000))
             people = _sorted_left_to_right(people, cfg.mirror_display)
 
@@ -239,6 +277,9 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                                      cfg.round_alphabets, cfg.mystery_rounds)
             else:
                 ui.draw_info_hint(display)
+
+            if dark_since is not None and now - dark_since >= cfg.black_frame_seconds:
+                ui.draw_camera_warning(display, cfg.camera_index)
 
             cv2.imshow(cfg.window_name, display)
             key = cv2.waitKey(1) & 0xFF

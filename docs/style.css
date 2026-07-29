@@ -114,6 +114,23 @@ html, body {
   height: auto;
 }
 
+.cam-warning {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(680px, 92vw);
+  background: rgba(60, 30, 10, 0.94);
+  border: 1px solid #e0b060;
+  border-radius: 10px;
+  padding: 14px 18px;
+  color: #ffd9a0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: left;
+}
+.cam-warning strong { color: #ffb84d; }
+
 .toolbar {
   position: fixed;
   right: 16px;

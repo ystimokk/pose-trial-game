@@ -22,6 +22,8 @@ const startBtn = document.getElementById("startBtn");
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const cameraSelect = document.getElementById("cameraSelect");
+const camWarning = document.getElementById("camWarning");
 
 // --- Game state ---
 let landmarker = null;
@@ -100,6 +102,75 @@ function restart() {
   resetTrialState();
 }
 
+// --- Camera selection ---
+// Browsers only reveal camera labels once the user has granted access, so this
+// runs again after the first successful getUserMedia to fill in real names.
+async function populateCameras() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  let cams;
+  try {
+    cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+  } catch {
+    return;
+  }
+  const previous = cameraSelect.value;
+  cameraSelect.replaceChildren();
+  const auto = document.createElement("option");
+  auto.value = "";
+  auto.textContent = "Default camera";
+  cameraSelect.appendChild(auto);
+  cams.forEach((d, i) => {
+    const opt = document.createElement("option");
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `Camera ${i + 1}`;
+    cameraSelect.appendChild(opt);
+  });
+  if (previous && cams.some((d) => d.deviceId === previous)) cameraSelect.value = previous;
+}
+
+populateCameras();
+navigator.mediaDevices?.addEventListener?.("devicechange", populateCameras);
+
+// --- Black-frame watchdog ---
+// Reading a downscaled copy keeps this cheap enough to run a couple times a second.
+const probe = document.createElement("canvas");
+probe.width = 32;
+probe.height = 18;
+const probeCtx = probe.getContext("2d", { willReadFrequently: true });
+let darkSince = null;
+let lastProbeAt = 0;
+let cameraLabel = "";
+
+function showCamWarning() {
+  const other = cameraSelect.options.length > 2;
+  const name = cameraLabel || cameraSelect.selectedOptions[0]?.textContent || "the selected camera";
+  camWarning.innerHTML =
+    `<strong>The camera is on, but every frame is black.</strong><br/>` +
+    `Using: ${name}.<br/>` +
+    `Check that nothing is covering the lens, that no other app or browser tab ` +
+    `is holding the camera (close them and press Exit, then start again)` +
+    (other ? `, or go back and pick a different camera.` : `.`);
+  camWarning.classList.remove("hidden");
+}
+
+function checkCameraHealth(now) {
+  if (now - lastProbeAt < 0.5) return;
+  lastProbeAt = now;
+  if (video.videoWidth === 0) return;
+  probeCtx.drawImage(video, 0, 0, probe.width, probe.height);
+  const d = probeCtx.getImageData(0, 0, probe.width, probe.height).data;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 4) sum += (d[i] + d[i + 1] + d[i + 2]) / 3;
+  const mean = sum / (d.length / 4);
+  if (mean < cfg.blackFrameThreshold) {
+    darkSince = darkSince ?? now;
+    if (now - darkSince >= cfg.blackFrameSeconds) showCamWarning();
+  } else {
+    darkSince = null;
+    camWarning.classList.add("hidden");
+  }
+}
+
 // --- Setup flow ---
 startBtn.addEventListener("click", async () => {
   n = parseInt(document.getElementById("participants").value, 10);
@@ -121,15 +192,31 @@ startBtn.addEventListener("click", async () => {
     });
 
     statusEl.textContent = "Requesting camera...";
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: cfg.frameWidth, height: cfg.frameHeight, facingMode: "user" },
-      audio: false,
-    });
+    const chosen = cameraSelect.value;
+    const constraints = {
+      width: cfg.frameWidth,
+      height: cfg.frameHeight,
+      ...(chosen ? { deviceId: { exact: chosen } } : { facingMode: "user" }),
+    };
+    const stream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
     video.srcObject = stream;
     await video.play();
 
+    // Some sources report an opaque id rather than a human-readable name.
+    const rawLabel = stream.getVideoTracks()[0]?.label || "";
+    cameraLabel = rawLabel.length <= 80 ? rawLabel : "";
+    populateCameras();
+
+    // Safari and Chrome both report 0x0 for a beat after play() resolves.
+    for (let i = 0; i < 40 && video.videoWidth === 0; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    if (video.videoWidth === 0) throw new Error("the camera never delivered a frame");
+
     canvas.width = video.videoWidth || cfg.frameWidth;
     canvas.height = video.videoHeight || cfg.frameHeight;
+    darkSince = null;
+    camWarning.classList.add("hidden");
 
     setupEl.classList.add("hidden");
     stageEl.classList.remove("hidden");
@@ -140,10 +227,16 @@ startBtn.addEventListener("click", async () => {
     requestAnimationFrame(loop);
   } catch (err) {
     console.error(err);
-    statusEl.textContent =
-      err.name === "NotAllowedError"
-        ? "Camera permission denied - allow camera access and try again."
-        : `Could not start: ${err.message || err}`;
+    const reasons = {
+      NotAllowedError: "Camera permission denied - allow camera access and try again.",
+      NotReadableError:
+        "Another app or browser tab is using the camera. Close it and try again.",
+      OverconstrainedError:
+        "That camera is no longer available. Pick a different one and try again.",
+      NotFoundError: "No camera found on this device.",
+    };
+    statusEl.textContent = reasons[err.name] || `Could not start: ${err.message || err}`;
+    populateCameras();
   } finally {
     startBtn.disabled = false;
   }
@@ -151,6 +244,8 @@ startBtn.addEventListener("click", async () => {
 
 function exitToSetup() {
   running = false;
+  camWarning.classList.add("hidden");
+  darkSince = null;
   if (video.srcObject) {
     for (const track of video.srcObject.getTracks()) track.stop();
     video.srcObject = null;
@@ -198,6 +293,8 @@ function loop(nowMs) {
   const now = nowMs / 1000;
   const w = canvas.width;
   const h = canvas.height;
+
+  checkCameraHealth(now);
 
   if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
     lastVideoTime = video.currentTime;

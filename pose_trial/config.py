@@ -187,6 +187,10 @@ class AppConfig:
     min_pose_detection_confidence: float = 0.5
     min_pose_presence_confidence: float = 0.5
     min_tracking_confidence: float = 0.5
+    # A camera that is blocked, in use elsewhere, or denied at the OS level hands
+    # back pure black frames instead of failing, so watch brightness and say so.
+    black_frame_threshold: float = 6.0   # mean 0-255 brightness counted as "no image"
+    black_frame_seconds: float = 2.5     # how long it must stay dark before we warn
     model_path: str = "models/pose_landmarker_full.task"
     model_url: str = (
         "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"

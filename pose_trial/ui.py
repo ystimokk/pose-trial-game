@@ -11,6 +11,7 @@ GREEN = (80, 220, 80)
 DARK_RED = (40, 40, 170)
 WHITE = (245, 245, 245)
 ACCENT = (255, 200, 80)
+WARN = (77, 184, 255)
 PANEL = (20, 16, 12)
 
 FONT = cv2.FONT_HERSHEY_DUPLEX
@@ -44,6 +45,20 @@ def draw_banner(frame, title, subtitle=None):
     _put_centered(frame, title, w / 2, h * 0.42, 1.6, WHITE, 3)
     if subtitle:
         _put_centered(frame, subtitle, w / 2, h * 0.52, 0.9, ACCENT, 2)
+
+
+def draw_camera_warning(frame, camera_index: int):
+    """Banner shown when the camera is delivering nothing but black frames."""
+    h, w = frame.shape[:2]
+    lines = [
+        f"Camera {camera_index} is on, but every frame is black.",
+        "Check the lens cover, close other apps using the camera,",
+        "or quit and run:  python main.py --list-cameras",
+    ]
+    draw_dim_panel(frame, int(h * 0.02), int(h * 0.20), alpha=0.75)
+    _put_centered(frame, lines[0], w / 2, h * 0.07, 1.0, WARN, 2)
+    for i, line in enumerate(lines[1:]):
+        _put_centered(frame, line, w / 2, h * (0.12 + 0.045 * i), 0.7, WHITE, 1)
 
 
 def draw_lineup(frame, detected: int, n: int):

@@ -24,6 +24,13 @@
         </select>
       </label>
 
+      <label class="field">
+        <span>Camera</span>
+        <select id="cameraSelect">
+          <option value="">Default camera</option>
+        </select>
+      </label>
+
       <details class="advanced">
         <summary>Advanced (for testing)</summary>
         <label class="field">
@@ -48,6 +55,7 @@
   <div id="stage" class="stage hidden">
     <video id="video" playsinline muted></video>
     <canvas id="canvas"></canvas>
+    <div id="camWarning" class="cam-warning hidden"></div>
     <div class="toolbar">
       <button id="infoBtn" title="How to play (I)">How to play</button>
       <button id="hintBtn" title="Hint trace (H)">Hint</button>
