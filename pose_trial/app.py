@@ -3,7 +3,7 @@
 States:
     LINEUP         -> waiting for n people to be in view
     DETECTED       -> short "Detected n adventurers..." interstitial
-    TRIAL          -> pose code shown; letters turn green as poses are held;
+    TRIAL          -> pose code shown; names turn green as poses are held;
                       when all are green a hold countdown runs
     ROUND_COMPLETE -> interstitial before the next (harder) round unlocks
     COMPLETE       -> final mission complete screen
@@ -239,7 +239,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                     elapsed = hold.update(all_green, now)
 
                     ui.draw_pose_code(display, list(code), statuses)
-                    ui.draw_person_letters(display, anchors)
+                    ui.draw_person_names(display, anchors)
 
                     if elapsed >= cfg.hold_seconds:
                         if not dev and round_idx < len(rounds) - 1:

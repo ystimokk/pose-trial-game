@@ -411,7 +411,7 @@ function renderFrame(nowMs) {
       const elapsed = hold.update(allGreen, now);
 
       ui.drawPoseCode(ctx, w, h, [...code], statuses);
-      ui.drawPersonLetters(ctx, w, h, anchors);
+      ui.drawPersonNames(ctx, w, h, anchors);
 
       if (elapsed >= cfg.holdSeconds) {
         if (!dev && roundIdx < rounds.length - 1) {

@@ -1,6 +1,8 @@
 // Canvas rendering - a port of pose_trial/ui.py.
-// No bounding boxes, no confidence numbers: participants only see their
-// letter/circle, green when the pose is held well enough, dark red otherwise.
+// No bounding boxes, no confidence numbers: participants only see their pose
+// name/circle, green when the pose is held well enough, dark red otherwise.
+
+import { POSE_NAMES } from "./poses.js";
 
 export const GREEN = "rgb(80, 220, 80)";
 export const DARK_RED = "rgb(170, 40, 40)";
@@ -20,6 +22,17 @@ function text(ctx, str, x, y, px, color, { weight = 700, align = "center", alpha
   ctx.textBaseline = "middle";
   ctx.fillText(str, x, y);
   ctx.restore();
+}
+
+// Shrink `px` until `str` fits in `maxW`. Pose names are far wider than the
+// single letters they replaced, so a five-adventurer line-up has to scale
+// itself down rather than run its labels together.
+function fitPx(ctx, str, maxW, px, weight = 700) {
+  ctx.save();
+  ctx.font = `${weight} ${Math.round(px)}px ${FONT}`;
+  const w = ctx.measureText(str).width;
+  ctx.restore();
+  return w <= maxW ? px : (px * maxW) / w;
 }
 
 function dimPanel(ctx, w, y0, y1, alpha = 0.55) {
@@ -51,15 +64,22 @@ export function drawPoseCode(ctx, w, h, letters, statuses) {
 
   const n = letters.length;
   const slot = w / (n + 1);
-  letters.forEach((letter, i) => {
-    text(ctx, letter, slot * (i + 1), stripH * 0.52, stripH * 0.62,
+  const names = [...letters].map((c) => POSE_NAMES[c]);
+  // One size for the whole row, set by the longest name: sizing each name
+  // independently makes the strip look ragged.
+  const px = Math.min(...names.map((nm) => fitPx(ctx, nm, slot * 0.86, stripH * 0.62, 800)));
+  names.forEach((name, i) => {
+    text(ctx, name, slot * (i + 1), stripH * 0.52, px,
          statuses[i] ? GREEN : DARK_RED, { weight: 800 });
   });
 }
 
-export function drawPersonLetters(ctx, w, h, anchors) {
+export function drawPersonNames(ctx, w, h, anchors) {
+  const maxW = (w / (anchors.length + 1)) * 0.9;
+  const px = Math.min(...anchors.map(({ letter }) =>
+    fitPx(ctx, POSE_NAMES[letter], maxW, h * 0.075, 800)));
   for (const { letter, ok, x, y } of anchors) {
-    text(ctx, letter, x, Math.max(40, y - 60), h * 0.075,
+    text(ctx, POSE_NAMES[letter], x, Math.max(40, y - 60), px,
          ok ? GREEN : DARK_RED, { weight: 800 });
   }
 }
@@ -298,15 +318,17 @@ const POSE_FIGURES = {
   },
 };
 
+// The card already shows the pose name as its heading, so the caption is just
+// the shape.
 const POSE_CAPTIONS = {
-  A: "Crane: both arms to the sky, left knee up",
-  B: "Tilted X, right leg up",
-  C: "Squat, arms forward",
-  D: "Frog: crouch low, hands down",
-  E: "Rocket: one arm up, one arm down",
-  F: "Tree: foot on knee, hands up",
-  G: "Archer: aim at the sky, one leg up",
-  H: "Knee hug: knee to chest",
+  A: "Both arms to the sky, left knee up",
+  B: "Arms in a tilted X, right leg up",
+  C: "Squat low, arms straight forward",
+  D: "Crouch low, hands to the floor",
+  E: "One arm up, one arm pinned down",
+  F: "Foot on knee, hands up together",
+  G: "Aim at the sky, one leg up",
+  H: "Hug one knee to your chest",
 };
 
 function stickFigure(ctx, letter, x0, y0, size, color) {
@@ -341,11 +363,11 @@ export function drawInfoOverlay(ctx, w, h, holdSeconds, confidenceThreshold, rou
   text(ctx, "HOW TO PLAY", w / 2, h * 0.055, h * 0.05, ACCENT, { weight: 800 });
 
   const rules = [
-    "1. Line up left to right - each adventurer gets one letter",
-    "2. Do your letter's pose until it turns GREEN",
-    `3. When ALL letters are green, hold together for ${holdSeconds} seconds`,
+    "1. Line up left to right - each adventurer is given one pose name",
+    "2. Do your pose until your name turns GREEN",
+    `3. When ALL names are green, hold together for ${holdSeconds} seconds`,
     "4. Round 1 done? Harder poses unlock... and the final round is a MYSTERY:",
-    `no letter, just your glowing skeleton - find your secret pose and hold it ${holdSeconds}s to lock in!`,
+    `no name, just your glowing skeleton - find your secret pose and hold it ${holdSeconds}s to lock in!`,
     `(The AI must be more than ${Math.round(confidenceThreshold * 100)}% sure your pose is right)`,
   ];
   let y = h * 0.105;
@@ -370,7 +392,9 @@ export function drawInfoOverlay(ctx, w, h, holdSeconds, confidenceThreshold, rou
          { weight: 700, align: "left" });
     [...letters].forEach((letter, i) => {
       const x0 = gap + i * (cardW + gap);
-      text(ctx, letter, x0 + cardW / 2, top + h * 0.02, h * 0.042, GREEN, { weight: 800 });
+      const name = POSE_NAMES[letter];
+      text(ctx, name, x0 + cardW / 2, top + h * 0.02,
+           fitPx(ctx, name, cardW * 0.95, h * 0.042, 800), GREEN, { weight: 800 });
       stickFigure(ctx, letter, x0 + (cardW - cardSize) / 2, top + h * 0.05, cardSize, WHITE);
       text(ctx, POSE_CAPTIONS[letter], x0 + cardW / 2,
            top + h * 0.055 + cardSize + h * 0.025, h * 0.021, ACCENT, { weight: 600 });

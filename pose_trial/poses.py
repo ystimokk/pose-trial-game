@@ -28,16 +28,31 @@ L_ANKLE, R_ANKLE = 27, 28
 # Body-part names used in per-part feedback
 L_ARM, R_ARM, L_LEG, R_LEG, TORSO = "left_arm", "right_arm", "left_leg", "right_leg", "torso"
 
+# What participants actually see and get called. The letters stay as internal
+# ids (they key the scorers, the round alphabets and dev mode), but nobody in
+# the room should have to remember that "B" means anything. Rename freely: this
+# dict is the only place the on-screen wording is defined.
+POSE_NAMES = {
+    "A": "Crane",
+    "B": "Star",
+    "C": "Zombie",
+    "D": "Frog",
+    "E": "Rocket",
+    "F": "Tree",
+    "G": "Archer",
+    "H": "Cannonball",
+}
+
 POSE_DESCRIPTIONS = {
     "A": "Crane: both arms reaching straight up to the sky, left knee raised and bent",
-    "B": "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
-    "C": "Squat down with both arms reaching forward",
+    "B": "Star: left arm on a diagonal, right arm straight up, right leg raised",
+    "C": "Zombie: squat down with both arms reaching forward",
     "D": "Frog: crouch all the way down, knees pushed out, hands to the floor",
     "E": "Rocket: one arm straight up, the other pressed down at your side, feet together",
     "F": "Tree: one foot on the other knee, arms overhead with hands together",
     "G": "Archer: aim your bow arm at the sky, other elbow bent pulling to the "
          "chin, one leg lifted",
-    "H": "Knee hug: pull one knee to your chest with both hands",
+    "H": "Cannonball: pull one knee to your chest with both hands",
 }
 
 
@@ -168,7 +183,8 @@ def score_pose_a(lm, t: PoseTuning) -> PoseResult:
 
 
 def score_pose_b(lm, t: PoseTuning) -> PoseResult:
-    """Tilted X: left arm diagonal, right arm straight up, right leg slightly raised."""
+    """Star: a tilted X - left arm diagonal, right arm straight up, right leg
+    slightly raised."""
     needed = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
               L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
@@ -207,7 +223,7 @@ def score_pose_b(lm, t: PoseTuning) -> PoseResult:
 
 
 def score_pose_c(lm, t: PoseTuning) -> PoseResult:
-    """Squat with both arms reaching forward at shoulder height."""
+    """Zombie: squat with both arms reaching forward at shoulder height."""
     needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
               L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
@@ -388,7 +404,7 @@ def score_pose_g(lm, t: PoseTuning) -> PoseResult:
 
 
 def score_pose_h(lm, t: PoseTuning) -> PoseResult:
-    """Knee hug: one knee pulled to the chest with both hands, standing tall."""
+    """Cannonball: one knee pulled to the chest with both hands, standing tall."""
     needed = [L_WRIST, R_WRIST, L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):
         return PoseResult(0.0)

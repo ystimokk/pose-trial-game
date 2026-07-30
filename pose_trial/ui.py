@@ -1,11 +1,13 @@
 """On-screen UI rendering (OpenCV).
 
-No bounding boxes, no confidence numbers: participants only see their letter,
-green when the pose is held well enough, dark red otherwise.
+No bounding boxes, no confidence numbers: participants only see their pose
+name, green when the pose is held well enough, dark red otherwise.
 """
 
 import cv2
 import numpy as np
+
+from .poses import POSE_NAMES
 
 GREEN = (80, 220, 80)
 DARK_RED = (40, 40, 170)
@@ -30,6 +32,14 @@ def _put_centered(img, text, cx, cy, scale, color, thickness):
     w, h = _text_size(text, scale, thickness)
     cv2.putText(img, text, (int(cx - w / 2), int(cy + h / 2)), FONT, scale,
                 color, thickness, cv2.LINE_AA)
+
+
+def _fit_scale(text, max_w, scale, thickness):
+    """Shrink `scale` until `text` fits in `max_w`. Pose names are far wider
+    than the single letters they replaced, so a five-adventurer line-up has to
+    scale itself down rather than run its labels together."""
+    w, _ = _text_size(text, scale, thickness)
+    return scale if w <= max_w else scale * max_w / w
 
 
 def draw_dim_panel(frame, y0, y1, alpha=0.55):
@@ -71,7 +81,7 @@ def draw_detected(frame, n: int):
 
 
 def draw_pose_code(frame, letters, statuses):
-    """Top strip showing the pose code; each letter green when its
+    """Top strip showing the pose code; each pose name green when its
     participant is holding the pose, dark red otherwise."""
     h, w = frame.shape[:2]
     strip_h = int(h * 0.17)
@@ -79,19 +89,27 @@ def draw_pose_code(frame, letters, statuses):
 
     n = len(letters)
     slot = w / (n + 1)
-    for i, (letter, ok) in enumerate(zip(letters, statuses)):
+    names = [POSE_NAMES[c] for c in letters]
+    # One scale for the whole row, set by the longest name: sizing each name
+    # independently makes the strip look ragged.
+    scale = min(_fit_scale(name, slot * 0.86, 2.4, 6) for name in names)
+    for i, (name, ok) in enumerate(zip(names, statuses)):
         color = GREEN if ok else DARK_RED
-        _put_centered(frame, letter, slot * (i + 1), strip_h * 0.52, 2.4, color, 6)
+        _put_centered(frame, name, slot * (i + 1), strip_h * 0.52, scale, color, 6)
 
 
-def draw_person_letters(frame, anchors):
-    """Letter floating above each participant's head.
+def draw_person_names(frame, anchors):
+    """Pose name floating above each participant's head.
 
     anchors: list of (letter, ok, x_px, y_px) in display coordinates.
     """
+    w = frame.shape[1]
+    max_w = w / (len(anchors) + 1) * 0.9
+    scale = min(_fit_scale(POSE_NAMES[letter], max_w, 1.8, 5)
+                for letter, *_ in anchors)
     for letter, ok, x, y in anchors:
         color = GREEN if ok else DARK_RED
-        _put_centered(frame, letter, x, max(40, y - 60), 1.8, color, 5)
+        _put_centered(frame, POSE_NAMES[letter], x, max(40, y - 60), scale, color, 5)
 
 
 def _countdown_number(remaining: float, total: float):
@@ -265,15 +283,17 @@ POSE_FIGURES["H"] = {
     ],
 }
 
+# The card already shows the pose name as its heading, so the caption is just
+# the shape.
 POSE_CAPTIONS = {
-    "A": "Crane: both arms to the sky, left knee up",
-    "B": "Tilted X, right leg up",
-    "C": "Squat, arms forward",
-    "D": "Frog: crouch low, hands down",
-    "E": "Rocket: one arm up, one arm down",
-    "F": "Tree: foot on knee, hands up",
-    "G": "Archer: aim at the sky, one leg up",
-    "H": "Knee hug: knee to chest",
+    "A": "Both arms to the sky, left knee up",
+    "B": "Arms in a tilted X, right leg up",
+    "C": "Squat low, arms straight forward",
+    "D": "Crouch low, hands to the floor",
+    "E": "One arm up, one arm pinned down",
+    "F": "Foot on knee, hands up together",
+    "G": "Aim at the sky, one leg up",
+    "H": "Hug one knee to your chest",
 }
 
 
@@ -343,11 +363,11 @@ def draw_info_overlay(frame, hold_seconds: float, confidence_threshold: float,
     _put_centered(frame, "HOW TO PLAY", w / 2, h * 0.055, 1.2, ACCENT, 2)
 
     rules = [
-        "1. Line up left to right - each adventurer gets one letter",
-        "2. Do your letter's pose until it turns GREEN",
-        f"3. When ALL letters are green, hold together for {hold_seconds:g} seconds",
+        "1. Line up left to right - each adventurer is given one pose name",
+        "2. Do your pose until your name turns GREEN",
+        f"3. When ALL names are green, hold together for {hold_seconds:g} seconds",
         "4. Round 1 done? Harder poses unlock... and the final round is a MYSTERY:",
-        f"   no letter, just your glowing skeleton - find your secret pose and hold it {hold_seconds:g}s to lock in!",
+        f"   no name, just your glowing skeleton - find your secret pose and hold it {hold_seconds:g}s to lock in!",
         f"(The AI must be more than {confidence_threshold:.0%} sure your pose is right)",
     ]
     rounds = tuple(r for i, r in enumerate(rounds) if i not in set(mystery_rounds))
@@ -369,7 +389,9 @@ def draw_info_overlay(frame, hold_seconds: float, confidence_threshold: float,
                     0.6, ACCENT, 1, cv2.LINE_AA)
         for i, letter in enumerate(letters):
             x0 = gap + i * (card_w + gap)
-            _put_centered(frame, letter, x0 + card_w / 2, top + h * 0.02, 0.95, GREEN, 2)
+            name = POSE_NAMES[letter]
+            _put_centered(frame, name, x0 + card_w / 2, top + h * 0.02,
+                          _fit_scale(name, card_w * 0.95, 0.95, 2), GREEN, 2)
             _draw_stick_figure(frame, letter, x0 + (card_w - card_size) / 2,
                                top + h * 0.05, card_size, WHITE)
             _put_centered(frame, POSE_CAPTIONS[letter], x0 + card_w / 2,

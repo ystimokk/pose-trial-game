@@ -18,22 +18,23 @@ Built on [MediaPipe Pose Landmarker](https://ai.google.dev/edge/mediapipe/soluti
 ## How a trial works
 
 1. The admin starts the app with the number of participants `n` (max 5).
-2. A random pose code of length `n` is generated from the letters A–D.
+2. A random pose code of length `n` is generated from the round 1 poses.
 3. The screen asks the adventurers to line up. Once `n` people are in view,
    it announces "Detected n adventurers... Starting the trial."
-4. The pose code is shown. Letters map to participants **left to right** as
-   seen on screen. Each letter (and a letter above each person's head) turns
-   **green** when that person holds their pose well enough, **dark red**
-   otherwise. No boxes or confidence numbers are shown.
-5. When every letter is green, a fading 5→1 countdown runs. If anyone breaks
+4. The pose code is shown as **pose names** (Crane, Star, Zombie, Frog), which
+   map to participants **left to right** as seen on screen. Each name (and a
+   name above each person's head) turns **green** when that person holds their
+   pose well enough, **dark red** otherwise. No boxes or confidence numbers are
+   shown.
+5. When every name is green, a fading 5→1 countdown runs. If anyone breaks
    their pose — even momentarily — the countdown resets. (A grace period for
    detection flicker can be re-enabled via `break_grace_seconds` in config.)
 6. Completing round 1 unlocks **round 2** with harder poses (E-H): a new code
    is generated and the trial continues.
 7. Completing round 2 unlocks the **mystery round**: each adventurer gets a
-   secret pose (drawn from all of A-H) that is never shown. Instead, everyone
+   secret pose (drawn from all eight) that is never shown. Instead, everyone
    sees their own skeleton with each limb colored green or red, and solves
-   their pose by trial and error. Circles replace the letters: red while
+   their pose by trial and error. Circles replace the names: red while
    searching, a personal fading countdown while holding a found pose, and
    green once the individual 5-second hold completes - that person is then
    locked in. All circles green ends the mission.
@@ -47,23 +48,28 @@ side by side, so no pose asks for a limb held out sideways: arms go up or stay
 tucked, and stances stay near shoulder width. Each pose fits in roughly 1.3
 torso-lengths of floor width, where a kid standing still already takes 0.75.
 
+Participants see each pose by **name**; the letter is only an internal id used
+by the config, the round alphabets and dev mode. To rename a pose, edit
+`POSE_NAMES` in `pose_trial/poses.py` and `docs/js/poses.js` — nothing else
+reads the display wording.
+
 Round 1:
 
-| Letter | Pose |
-| --- | --- |
-| A | Crane: both arms reaching straight up to the sky, left knee raised and bent |
-| B | Tilted X: left arm on a diagonal, right arm straight up, right leg slightly raised |
-| C | Squat down with both arms reaching forward |
-| D | Frog: crouch all the way down, knees pushed out past the feet, both hands to the floor |
+| Name | Id | Pose |
+| --- | --- | --- |
+| Crane | A | Both arms reaching straight up to the sky, left knee raised and bent |
+| Star | B | A tilted X: left arm on a diagonal, right arm straight up, right leg slightly raised |
+| Zombie | C | Squat down with both arms reaching forward |
+| Frog | D | Crouch all the way down, knees pushed out past the feet, both hands to the floor |
 
 Round 2 (harder - balance and coordination):
 
-| Letter | Pose |
-| --- | --- |
-| E | Rocket: one arm shot straight up past the head, the other pressed down against the side, feet together |
-| F | Tree: one foot against the other knee, arms overhead with hands together |
-| G | Archer: bow arm aimed up at the sky, other elbow bent pulling the wrist to the chin, one leg lifted (either leg) |
-| H | Knee hug: pull one knee to the chest with both hands while standing tall |
+| Name | Id | Pose |
+| --- | --- | --- |
+| Rocket | E | One arm shot straight up past the head, the other pressed down against the side, feet together |
+| Tree | F | One foot against the other knee, arms overhead with hands together |
+| Archer | G | Bow arm aimed up at the sky, other elbow bent pulling the wrist to the chin, one leg lifted (either leg) |
+| Cannonball | H | Pull one knee to the chest with both hands while standing tall |
 
 ## Setup
 
@@ -171,8 +177,8 @@ because hip and knee sit close together, so landmark noise swings its ratios
 much harder than it does a limb angle.
 
 Difficulty lives in the pose geometry, not in the timer. The hold countdown
-only advances on frames where every letter is green, so a red letter always
-stops the clock; at the default `break_grace_seconds` of 0 it resets outright.
+only advances on frames where every name is green, so a red name always stops
+the clock; at the default `break_grace_seconds` of 0 it resets outright.
 
 To make it harder, narrow the ideal bands in `PoseTuning` and/or raise
 `confidence_threshold`. To give kids more slack, widen the ideal bands and push

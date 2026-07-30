@@ -16,16 +16,31 @@ export const L_ARM = "left_arm", R_ARM = "right_arm";
 export const L_LEG = "left_leg", R_LEG = "right_leg";
 export const TORSO = "torso";
 
+// What participants actually see and get called. The letters stay as internal
+// ids (they key the scorers, the round alphabets and dev mode), but nobody in
+// the room should have to remember that "B" means anything. Rename freely: this
+// object is the only place the on-screen wording is defined.
+export const POSE_NAMES = {
+  A: "Crane",
+  B: "Star",
+  C: "Zombie",
+  D: "Frog",
+  E: "Rocket",
+  F: "Tree",
+  G: "Archer",
+  H: "Cannonball",
+};
+
 export const POSE_DESCRIPTIONS = {
   A: "Crane: both arms reaching straight up to the sky, left knee raised and bent",
-  B: "Tilted X: left arm on a diagonal, right arm straight up, right leg raised",
-  C: "Squat down with both arms reaching forward",
+  B: "Star: left arm on a diagonal, right arm straight up, right leg raised",
+  C: "Zombie: squat down with both arms reaching forward",
   D: "Frog: crouch all the way down, knees pushed out, hands to the floor",
   E: "Rocket: one arm straight up, the other pressed down at your side, feet together",
   F: "Tree: one foot on the other knee, arms overhead with hands together",
   G: "Archer: aim your bow arm at the sky, other elbow bent pulling to the " +
      "chin, one leg lifted",
-  H: "Knee hug: pull one knee to your chest with both hands",
+  H: "Cannonball: pull one knee to your chest with both hands",
 };
 
 class Criteria {
