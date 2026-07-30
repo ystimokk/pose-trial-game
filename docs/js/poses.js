@@ -31,6 +31,12 @@ export const POSE_NAMES = {
   H: "Cannonball",
 };
 
+// A pose code as the admin reads it in the console: names, with the internal
+// ids kept alongside so dev mode stays debuggable.
+export function formatCode(code) {
+  return `${[...code].map((c) => POSE_NAMES[c]).join(" ")}  [${code}]`;
+}
+
 export const POSE_DESCRIPTIONS = {
   A: "Crane: both arms reaching straight up to the sky, left knee raised and bent",
   B: "Star: left arm on a diagonal, right arm straight up, right leg raised",

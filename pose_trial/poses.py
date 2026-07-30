@@ -43,6 +43,12 @@ POSE_NAMES = {
     "H": "Cannonball",
 }
 
+def format_code(code: str) -> str:
+    """A pose code as the admin reads it in the console: names, with the
+    internal ids kept alongside so dev mode stays debuggable."""
+    return f"{' '.join(POSE_NAMES[c] for c in code)}  [{code}]"
+
+
 POSE_DESCRIPTIONS = {
     "A": "Crane: both arms reaching straight up to the sky, left knee raised and bent",
     "B": "Star: left arm on a diagonal, right arm straight up, right leg raised",

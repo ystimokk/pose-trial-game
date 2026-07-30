@@ -3,7 +3,7 @@
 
 import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs";
 import { CONFIG } from "./config.js";
-import { POSE_SCORERS, NOSE } from "./poses.js";
+import { POSE_SCORERS, NOSE, formatCode } from "./poses.js";
 import * as ui from "./ui.js";
 
 const State = {
@@ -97,7 +97,7 @@ function resetTrialState() {
 function restart() {
   roundIdx = initialRoundIdx;
   code = nextCode();
-  console.log(`Pose code: ${code}`);
+  console.log(`Pose code: ${formatCode(code)}`);
   state = dev ? State.TRIAL : State.LINEUP;
   lineupFullSince = null;
   resetTrialState();
@@ -431,7 +431,7 @@ function renderFrame(nowMs) {
     if (now - roundCompleteAt >= cfg.roundAdvanceSeconds) {
       roundIdx += 1;
       code = nextCode();
-      console.log(`Round ${roundIdx + 1} pose code: ${code}`);
+      console.log(`Round ${roundIdx + 1} pose code: ${formatCode(code)}`);
       state = State.TRIAL;
       resetTrialState();
     }
@@ -440,7 +440,7 @@ function renderFrame(nowMs) {
     ui.drawComplete(ctx, w, h);
     if (dev && now - completedAt >= cfg.devAdvanceSeconds) {
       code = nextCode();
-      console.log(`Dev mode - next pose code: ${code}`);
+      console.log(`Dev mode - next pose: ${formatCode(code)}`);
       state = State.TRIAL;
       resetTrialState();
     }

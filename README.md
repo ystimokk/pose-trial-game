@@ -29,7 +29,8 @@ Built on [MediaPipe Pose Landmarker](https://ai.google.dev/edge/mediapipe/soluti
 5. When every name is green, a fading 5→1 countdown runs. If anyone breaks
    their pose — even momentarily — the countdown resets. (A grace period for
    detection flicker can be re-enabled via `break_grace_seconds` in config.)
-6. Completing round 1 unlocks **round 2** with harder poses (E-H): a new code
+6. Completing round 1 unlocks **round 2** with harder poses (Rocket, Tree,
+   Archer, Cannonball): a new code
    is generated and the trial continues.
 7. Completing round 2 unlocks the **mystery round**: each adventurer gets a
    secret pose (drawn from all eight) that is never shown. Instead, everyone
@@ -91,9 +92,9 @@ If `--participants` is omitted, the admin is prompted for it. `--camera N`
 selects a different camera when the default one is not the one pointing at the
 station (see [Camera troubleshooting](#camera-troubleshooting)).
 
-For testing poses, dev mode cycles the code through A-H in order and
-auto-advances a few seconds after each completion (no lineup or rounds
-between trials):
+For testing poses, dev mode cycles the code through every pose in order (Crane,
+Star, Zombie, Frog, Rocket, Tree, Archer, Cannonball) and auto-advances a few
+seconds after each completion (no lineup or rounds between trials):
 
 ```bash
 python main.py --participants 1 --dev

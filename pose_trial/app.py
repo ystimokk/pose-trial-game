@@ -17,7 +17,7 @@ import cv2
 
 from .config import AppConfig
 from .detector import PoseDetector
-from .poses import NOSE, POSE_SCORERS
+from .poses import NOSE, POSE_SCORERS, format_code
 from . import ui
 
 
@@ -136,7 +136,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
         return generate_code(rounds[round_idx], n)
 
     code = next_code()
-    print(f"Pose code for {n} adventurers: {code}")
+    print(f"Pose code for {n} adventurers: {format_code(code)}")
 
     state = State.LINEUP
     lineup_full_since = None      # when n people first became visible
@@ -257,7 +257,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                 if now - round_complete_at >= cfg.round_advance_seconds:
                     round_idx += 1
                     code = next_code()
-                    print(f"Round {round_idx + 1} pose code: {code}")
+                    print(f"Round {round_idx + 1} pose code: {format_code(code)}")
                     state = State.TRIAL
                     hold.reset()
                     solved = [False] * n
@@ -268,7 +268,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
                 ui.draw_complete(display)
                 if dev and now - completed_at >= cfg.dev_advance_seconds:
                     code = next_code()
-                    print(f"Dev mode - next pose code: {code}")
+                    print(f"Dev mode - next pose: {format_code(code)}")
                     state = State.TRIAL
                     hold.reset()
 
@@ -292,7 +292,7 @@ def run(n: int, cfg: AppConfig | None = None, dev: bool = False, start_round: in
             if key == ord("r"):
                 round_idx = initial_round_idx
                 code = next_code()
-                print(f"New pose code: {code}")
+                print(f"New pose code: {format_code(code)}")
                 state = State.TRIAL if dev else State.LINEUP
                 lineup_full_since = None
                 hold.reset()
