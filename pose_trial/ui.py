@@ -288,7 +288,7 @@ POSE_FIGURES["H"] = {
 POSE_CAPTIONS = {
     "A": "Both arms to the sky, left knee up",
     "B": "Arms in a tilted X, right leg up",
-    "C": "Squat low, arms straight forward",
+    "C": "Bend low, arms straight forward",
     "D": "Crouch low, hands to the floor",
     "E": "One arm up, one arm pinned down",
     "F": "Foot on knee, hands up together",

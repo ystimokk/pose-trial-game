@@ -23,7 +23,7 @@ export const TORSO = "torso";
 export const POSE_NAMES = {
   A: "Crane",
   B: "Star",
-  C: "Zombie",
+  C: "Squat",
   D: "Frog",
   E: "Rocket",
   F: "Tree",
@@ -40,7 +40,7 @@ export function formatCode(code) {
 export const POSE_DESCRIPTIONS = {
   A: "Crane: both arms reaching straight up to the sky, left knee raised and bent",
   B: "Star: left arm on a diagonal, right arm straight up, right leg raised",
-  C: "Zombie: squat down with both arms reaching forward",
+  C: "Squat: knees bent, both arms reaching forward",
   D: "Frog: crouch all the way down, knees pushed out, hands to the floor",
   E: "Rocket: one arm straight up, the other pressed down at your side, feet together",
   F: "Tree: one foot on the other knee, arms overhead with hands together",

@@ -35,7 +35,7 @@ L_ARM, R_ARM, L_LEG, R_LEG, TORSO = "left_arm", "right_arm", "left_leg", "right_
 POSE_NAMES = {
     "A": "Crane",
     "B": "Star",
-    "C": "Zombie",
+    "C": "Squat",
     "D": "Frog",
     "E": "Rocket",
     "F": "Tree",
@@ -52,7 +52,7 @@ def format_code(code: str) -> str:
 POSE_DESCRIPTIONS = {
     "A": "Crane: both arms reaching straight up to the sky, left knee raised and bent",
     "B": "Star: left arm on a diagonal, right arm straight up, right leg raised",
-    "C": "Zombie: squat down with both arms reaching forward",
+    "C": "Squat: knees bent, both arms reaching forward",
     "D": "Frog: crouch all the way down, knees pushed out, hands to the floor",
     "E": "Rocket: one arm straight up, the other pressed down at your side, feet together",
     "F": "Tree: one foot on the other knee, arms overhead with hands together",
@@ -229,7 +229,7 @@ def score_pose_b(lm, t: PoseTuning) -> PoseResult:
 
 
 def score_pose_c(lm, t: PoseTuning) -> PoseResult:
-    """Zombie: squat with both arms reaching forward at shoulder height."""
+    """Squat with both arms reaching forward at shoulder height."""
     needed = [L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST,
               L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE]
     if not _visibility_ok(lm, needed, t):

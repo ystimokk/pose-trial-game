@@ -21,7 +21,7 @@ Built on [MediaPipe Pose Landmarker](https://ai.google.dev/edge/mediapipe/soluti
 2. A random pose code of length `n` is generated from the round 1 poses.
 3. The screen asks the adventurers to line up. Once `n` people are in view,
    it announces "Detected n adventurers... Starting the trial."
-4. The pose code is shown as **pose names** (Crane, Star, Zombie, Frog), which
+4. The pose code is shown as **pose names** (Crane, Star, Squat, Frog), which
    map to participants **left to right** as seen on screen. Each name (and a
    name above each person's head) turns **green** when that person holds their
    pose well enough, **dark red** otherwise. No boxes or confidence numbers are
@@ -60,7 +60,7 @@ Round 1:
 | --- | --- | --- |
 | Crane | A | Both arms reaching straight up to the sky, left knee raised and bent |
 | Star | B | A tilted X: left arm on a diagonal, right arm straight up, right leg slightly raised |
-| Zombie | C | Squat down with both arms reaching forward |
+| Squat | C | Squat down with both arms reaching forward |
 | Frog | D | Crouch all the way down, knees pushed out past the feet, both hands to the floor |
 
 Round 2 (harder - balance and coordination):
@@ -93,7 +93,7 @@ selects a different camera when the default one is not the one pointing at the
 station (see [Camera troubleshooting](#camera-troubleshooting)).
 
 For testing poses, dev mode cycles the code through every pose in order (Crane,
-Star, Zombie, Frog, Rocket, Tree, Archer, Cannonball) and auto-advances a few
+Star, Squat, Frog, Rocket, Tree, Archer, Cannonball) and auto-advances a few
 seconds after each completion (no lineup or rounds between trials):
 
 ```bash
